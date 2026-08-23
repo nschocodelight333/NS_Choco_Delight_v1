@@ -1,92 +1,64 @@
-require('dotenv').config();
-require('express-async-errors');
-
 const express = require('express');
 const cors = require('cors');
-const cookieParser = require('cookie-parser');
-const morgan = require('morgan');
-
+const dotenv = require('dotenv');
+const path = require('path');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 
-// Route imports
-const authRoutes = require('./routes/auth');
-const productRoutes = require('./routes/products');
-const cartRoutes = require('./routes/cart');
-const orderRoutes = require('./routes/orders');
-const paymentRoutes = require('./routes/payment');
-const adminRoutes = require('./routes/admin');
-const campaignRoutes = require('./routes/campaigns');
-const customOrderRoutes = require('./routes/customOrders');
-
-// Startup env check
-if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
-  console.error('❌ FATAL: Missing JWT_SECRET environment variable.');
-  process.exit(1);
-}
-
-// Connect to MongoDB
-connectDB();
+dotenv.config();
 
 const app = express();
 
-// Log 401/403/500 backend errors for monitoring
-app.use((req, res, next) => {
-  const originalJson = res.json;
-  res.json = function (body) {
-    if (res.statusCode >= 400) {
-      console.warn(`⚠️ [${new Date().toISOString()}] HTTP ${res.statusCode} ${req.method} ${req.originalUrl} | Msg: ${body?.message || 'Error'}`);
-    }
-    return originalJson.call(this, body);
-  };
-  next();
-});
+// Connect DB
+connectDB();
 
-// ─── Middleware ───────────────────────────────────────
+// CORS Config
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:5174',
   'http://localhost:3000',
-  'http://127.0.0.1:5173',
-];
-if (process.env.FRONTEND_URL) {
-  const cleanFrontendUrl = process.env.FRONTEND_URL.replace(/\/+$/, '');
-  allowedOrigins.push(cleanFrontendUrl);
-}
+  'http://localhost:4173',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, postman)
-    if (!origin) return callback(null, true);
-    // Return exact origin string so Access-Control-Allow-Origin header matches origin for credentials: true
-    return callback(null, origin);
-  },
-  credentials: true,
-}));
-const path = require('path');
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://localhost:')) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Allow for local development & testing
+      }
+    },
+    credentials: true,
+  })
+);
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve uploaded images statically
+// Serve static uploaded files (e.g. campaign banners, reference images)
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
-// ─── Routes ───────────────────────────────────────────
-app.use('/api/auth', authRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/cart', cartRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/payment', paymentRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/campaigns', campaignRoutes);
-app.use('/api/custom-orders', customOrderRoutes);
+// Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/products', require('./routes/products'));
+app.use('/api/cart', require('./routes/cart'));
+app.use('/api/orders', require('./routes/orders'));
+app.use('/api/custom-orders', require('./routes/customOrders'));
+app.use('/api/campaigns', require('./routes/campaigns'));
+app.use('/api/payment', require('./routes/payment'));
+
+// Admin Routes
+app.use('/api/admin', require('./routes/admin'));
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'NS Choco Delight API is running' });
+  res.json({
+    status: 'ok',
+    timestamp: new Date(),
+    environment: process.env.NODE_ENV || 'development',
+  });
 });
 
 // ─── 404 Handler ─────────────────────────────────────
@@ -99,8 +71,17 @@ app.use(errorHandler);
 
 if (process.env.NODE_ENV !== 'test') {
   const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`🍫 NS Choco Delight API running on port ${PORT} in ${process.env.NODE_ENV} mode`);
+  const server = app.listen(PORT, () => {
+    console.log(`🍫 NS Choco Delight API running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`❌ Port ${PORT} is already in use by another running server process.`);
+      console.log(`👉 To fix: Close existing terminal or process on port ${PORT}.`);
+    } else {
+      console.error('Server error:', err);
+    }
   });
 }
 
