@@ -1,5 +1,6 @@
 const CustomOrderRequest = require('../models/CustomOrderRequest');
 const Order = require('../models/Order');
+const User = require('../models/User');
 
 const DELIVERY_FEE = 40;
 const FREE_DELIVERY_THRESHOLD = 500;
@@ -30,7 +31,7 @@ const submitCustomOrder = async (req, res) => {
     referenceImageUrls,
   });
 
-  await request.populate('userId', 'name email');
+  await request.populate('userId', 'name email phone');
   res.status(201).json({ success: true, request });
 };
 
@@ -98,7 +99,8 @@ const checkoutCustomOrder = async (req, res) => {
     return res.status(400).json({ success: false, message: 'No quoted price found for this request.' });
   }
 
-  const deliveryFee = request.quotedPrice >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
+  const isTakeaway = paymentInfo?.paymentMethod === 'takeaway' || deliveryAddress?.isTakeaway;
+  const deliveryFee = isTakeaway ? 0 : (request.quotedPrice >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE);
   const totalAmount = request.quotedPrice + deliveryFee;
 
   // Create a regular Order for this custom request
@@ -126,6 +128,23 @@ const checkoutCustomOrder = async (req, res) => {
   request.status = 'Converted to Order';
   request.convertedOrderId = order._id;
   await request.save();
+
+  // Update user profile address & phone automatically if provided and not takeaway
+  if (deliveryAddress && !isTakeaway) {
+    try {
+      await User.findByIdAndUpdate(req.user._id, {
+        $set: {
+          address: {
+            street: deliveryAddress.street || '',
+            city: deliveryAddress.city || '',
+            state: deliveryAddress.state || '',
+            pincode: deliveryAddress.pincode || '',
+          },
+          phone: deliveryAddress.phone || req.user.phone || '',
+        },
+      });
+    } catch (e) { /* ignore */ }
+  }
 
   res.status(201).json({ success: true, order });
 };
@@ -160,7 +179,7 @@ const setQuote = async (req, res) => {
     return res.status(400).json({ success: false, message: 'A valid quoted price is required.' });
   }
 
-  const request = await CustomOrderRequest.findById(req.params.id).populate('userId', 'name email');
+  const request = await CustomOrderRequest.findById(req.params.id).populate('userId', 'name email phone');
   if (!request) {
     return res.status(404).json({ success: false, message: 'Custom order request not found.' });
   }
@@ -194,7 +213,7 @@ const updateCustomOrderStatus = async (req, res) => {
     req.params.id,
     { status },
     { new: true }
-  ).populate('userId', 'name email');
+  ).populate('userId', 'name email phone');
 
   if (!request) {
     return res.status(404).json({ success: false, message: 'Custom order request not found.' });

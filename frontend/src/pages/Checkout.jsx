@@ -1,9 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { createRazorpayOrder, verifyPayment } from '../api/payment';
-import { createOrder } from '../api/orders';
+import { createOrder, getMyOrders } from '../api/orders';
 import { getImageUrl } from '../utils/imageUrl';
 import toast from 'react-hot-toast';
 
@@ -16,9 +15,6 @@ const Checkout = () => {
   const { cart, cartTotal } = useCart();
   const items = cart?.items || [];
 
-  const deliveryFee = cartTotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
-  const totalAmount = cartTotal + deliveryFee;
-
   const [address, setAddress] = useState({
     street: user?.address?.street || '',
     city: user?.address?.city || '',
@@ -26,14 +22,88 @@ const Checkout = () => {
     pincode: user?.address?.pincode || '',
     phone: user?.phone || '',
   });
-  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online' | 'cod'
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedSavedIdx, setSelectedSavedIdx] = useState('0');
+  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online' | 'cod' | 'takeaway'
   const [paying, setPaying] = useState(false);
+
+  useEffect(() => {
+    // Collect addresses from user profile and past order history
+    const addrs = [];
+    if (user?.address?.street) {
+      addrs.push({
+        label: `📍 Profile Default (${user.address.street}, ${user.address.city || ''})`,
+        street: user.address.street || '',
+        city: user.address.city || '',
+        state: user.address.state || '',
+        pincode: user.address.pincode || '',
+        phone: user.phone || '',
+      });
+    }
+
+    getMyOrders()
+      .then((res) => {
+        const orders = res.data?.orders || [];
+        orders.forEach((o) => {
+          if (o.deliveryAddress?.street && !o.deliveryAddress.isTakeaway) {
+            const exists = addrs.some(
+              (a) => a.street?.toLowerCase() === o.deliveryAddress.street?.toLowerCase()
+            );
+            if (!exists) {
+              addrs.push({
+                label: `📦 Order #${o._id.slice(-6)} (${o.deliveryAddress.street}, ${o.deliveryAddress.city || ''})`,
+                street: o.deliveryAddress.street || '',
+                city: o.deliveryAddress.city || '',
+                state: o.deliveryAddress.state || '',
+                pincode: o.deliveryAddress.pincode || '',
+                phone: o.deliveryAddress.phone || user?.phone || '',
+              });
+            }
+          }
+        });
+        setSavedAddresses(addrs);
+        if (addrs.length > 0) {
+          setAddress({
+            street: addrs[0].street,
+            city: addrs[0].city,
+            state: addrs[0].state,
+            pincode: addrs[0].pincode,
+            phone: addrs[0].phone,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [user]);
+
+  const handleSavedAddressSelect = (idxStr) => {
+    setSelectedSavedIdx(idxStr);
+    if (idxStr === 'new') {
+      setAddress({ street: '', city: '', state: '', pincode: '', phone: user?.phone || '' });
+    } else {
+      const idx = Number(idxStr);
+      if (savedAddresses[idx]) {
+        const selected = savedAddresses[idx];
+        setAddress({
+          street: selected.street,
+          city: selected.city,
+          state: selected.state,
+          pincode: selected.pincode,
+          phone: selected.phone || user?.phone || '',
+        });
+      }
+    }
+  };
+
+  const isTakeaway = paymentMethod === 'takeaway';
+  const deliveryFee = isTakeaway ? 0 : (cartTotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE);
+  const totalAmount = cartTotal + deliveryFee;
 
   const handleAddressChange = (e) => {
     setAddress((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const validateAddress = () => {
+    if (isTakeaway) return true; // Address not required for store pickup
     const required = ['street', 'city', 'state', 'pincode', 'phone'];
     for (const field of required) {
       if (!address[field]?.trim()) {
@@ -52,26 +122,42 @@ const Checkout = () => {
     return true;
   };
 
-  // Place order with Cash on Delivery
-  const handleCodOrder = async () => {
+  // Place order with Cash on Delivery or Takeaway
+  const handleDirectOrder = async (statusType) => {
     setPaying(true);
     try {
+      const finalAddress = isTakeaway
+        ? {
+            street: 'NS Choco Delight Store (Self Pickup)',
+            city: 'Store Pickup',
+            state: 'Pickup',
+            pincode: '500001',
+            phone: address.phone || user?.phone || '8185920511',
+            isTakeaway: true,
+          }
+        : address;
+
       const newOrder = await createOrder({
-        deliveryAddress: address,
+        deliveryAddress: finalAddress,
         items: items.map((i) => ({
           productId: i.product?._id || i.product,
           quantity: i.quantity,
           shape: i.shape || '',
         })),
         paymentInfo: {
-          status: 'cod',
+          status: statusType, // 'cod' | 'takeaway'
+          paymentMethod: statusType,
           razorpayOrderId: '',
           razorpayPaymentId: '',
           razorpaySignature: '',
         },
       });
 
-      toast.success('Order placed successfully with Cash on Delivery! 🍫');
+      toast.success(
+        statusType === 'takeaway'
+          ? 'Self Pickup Order Placed! Pick up at NS Choco Delight store 🛍️'
+          : 'Order placed successfully with Cash on Delivery! 🍫'
+      );
       navigate(`/order-confirmation/${newOrder.data.order._id}`, { replace: true });
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to place order. Please try again.');
@@ -82,10 +168,20 @@ const Checkout = () => {
   // Place order with Online Payment (PhonePe / Paytm / GPay / 8185920511)
   const handleOnlinePayment = async () => {
     setPaying(true);
-
     try {
+      const finalAddress = isTakeaway
+        ? {
+            street: 'NS Choco Delight Store (Self Pickup)',
+            city: 'Store Pickup',
+            state: 'Pickup',
+            pincode: '500001',
+            phone: address.phone || user?.phone || '8185920511',
+            isTakeaway: true,
+          }
+        : address;
+
       const newOrder = await createOrder({
-        deliveryAddress: address,
+        deliveryAddress: finalAddress,
         items: items.map((i) => ({
           productId: i.product?._id || i.product,
           quantity: i.quantity,
@@ -114,7 +210,9 @@ const Checkout = () => {
     if (!validateAddress()) return;
 
     if (paymentMethod === 'cod') {
-      handleCodOrder();
+      handleDirectOrder('cod');
+    } else if (paymentMethod === 'takeaway') {
+      handleDirectOrder('takeaway');
     } else {
       handleOnlinePayment();
     }
@@ -124,96 +222,146 @@ const Checkout = () => {
     return (
       <div className="py-20 text-center page-container">
         <p className="text-choco-600 text-lg mb-4">Your cart is empty.</p>
-        <a href="/products" className="btn-primary">Shop Now</a>
+        <a href="/products" className="btn-primary">
+          Shop Now
+        </a>
       </div>
     );
   }
 
   return (
-    <div className="py-10 min-h-screen">
-      <div className="page-container">
+    <div className="py-10 min-h-screen bg-cream/30">
+      <div className="page-container max-w-5xl mx-auto">
         <h1 className="section-title mb-8">Checkout</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           {/* ─── Delivery Address ─────────────────────── */}
           <div>
-            <div className="bg-white rounded-2xl shadow-sm border border-choco-100 p-6">
-              <h2 className="font-display text-xl font-bold text-choco-900 mb-5">📍 Delivery Address</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="label" htmlFor="checkout-street">Street Address *</label>
-                  <textarea
-                    id="checkout-street"
-                    name="street"
-                    value={address.street}
-                    onChange={handleAddressChange}
-                    rows={2}
-                    placeholder="House/Flat No., Building, Street..."
-                    className="input-field resize-none"
-                    required
-                  />
+            <div className="bg-white rounded-3xl shadow-sm border border-choco-100 p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-choco-100 pb-3">
+                <h2 className="font-display text-xl font-bold text-choco-900">📍 Delivery Address</h2>
+                <span className="text-xs text-choco-500 font-medium">Auto-filled from Profile</span>
+              </div>
+
+              {/* Saved Address Selection Dropdown */}
+              {savedAddresses.length > 0 && !isTakeaway && (
+                <div className="bg-choco-50/70 p-3.5 rounded-2xl border border-choco-200/80">
+                  <label className="text-xs font-bold text-choco-800 mb-1.5 block">
+                    📍 Choose Saved Address
+                  </label>
+                  <select
+                    value={selectedSavedIdx}
+                    onChange={(e) => handleSavedAddressSelect(e.target.value)}
+                    className="input-field text-xs font-medium bg-white border-choco-200 shadow-2xs"
+                  >
+                    {savedAddresses.map((a, i) => (
+                      <option key={i} value={i.toString()}>
+                        {a.label}
+                      </option>
+                    ))}
+                    <option value="new">➕ Enter a New Address</option>
+                  </select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="label" htmlFor="checkout-city">City *</label>
+              )}
+
+              {isTakeaway ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center space-y-2">
+                  <span className="text-4xl block">🛍️</span>
+                  <h3 className="font-display font-bold text-emerald-900 text-lg">Self Pickup at Store</h3>
+                  <p className="text-xs text-emerald-700 leading-relaxed">
+                    You chose <strong>Take Away</strong>. You can pick up your fresh order directly at NS Choco Delight store. Delivery address is waived!
+                  </p>
+                  <div className="pt-2">
+                    <label className="label text-xs text-left">Mobile Number for Pickup SMS *</label>
                     <input
-                      id="checkout-city"
-                      name="city"
-                      value={address.city}
-                      onChange={handleAddressChange}
-                      placeholder="City"
-                      className="input-field"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="label" htmlFor="checkout-state">State *</label>
-                    <input
-                      id="checkout-state"
-                      name="state"
-                      value={address.state}
-                      onChange={handleAddressChange}
-                      placeholder="State"
-                      className="input-field"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="label" htmlFor="checkout-pincode">Pincode *</label>
-                    <input
-                      id="checkout-pincode"
-                      name="pincode"
-                      value={address.pincode}
-                      onChange={handleAddressChange}
-                      placeholder="6-digit pincode"
-                      maxLength={6}
-                      className="input-field"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="label" htmlFor="checkout-phone">Phone *</label>
-                    <input
-                      id="checkout-phone"
+                      id="checkout-phone-takeaway"
                       name="phone"
                       value={address.phone}
                       onChange={handleAddressChange}
-                      placeholder="10-digit mobile"
+                      placeholder="10-digit mobile number"
                       maxLength={10}
-                      className="input-field"
+                      className="input-field mt-1 text-sm bg-white"
                       required
                     />
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="label" htmlFor="checkout-street">Street Address *</label>
+                    <textarea
+                      id="checkout-street"
+                      name="street"
+                      value={address.street}
+                      onChange={handleAddressChange}
+                      rows={2}
+                      placeholder="House/Flat No., Building, Street..."
+                      className="input-field resize-none text-sm"
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="label" htmlFor="checkout-city">City *</label>
+                      <input
+                        id="checkout-city"
+                        name="city"
+                        value={address.city}
+                        onChange={handleAddressChange}
+                        placeholder="City"
+                        className="input-field text-sm"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="label" htmlFor="checkout-state">State *</label>
+                      <input
+                        id="checkout-state"
+                        name="state"
+                        value={address.state}
+                        onChange={handleAddressChange}
+                        placeholder="State"
+                        className="input-field text-sm"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="label" htmlFor="checkout-pincode">Pincode *</label>
+                      <input
+                        id="checkout-pincode"
+                        name="pincode"
+                        value={address.pincode}
+                        onChange={handleAddressChange}
+                        placeholder="6-digit pincode"
+                        maxLength={6}
+                        className="input-field text-sm"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="label" htmlFor="checkout-phone">Phone *</label>
+                      <input
+                        id="checkout-phone"
+                        name="phone"
+                        value={address.phone}
+                        onChange={handleAddressChange}
+                        placeholder="10-digit mobile"
+                        maxLength={10}
+                        className="input-field text-sm"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* ─── Order Summary + Pay ─────────────────────── */}
           <div>
-            <div className="bg-white rounded-2xl shadow-sm border border-choco-100 p-6 mb-4">
+            <div className="bg-white rounded-3xl shadow-sm border border-choco-100 p-6 mb-4">
               <h2 className="font-display text-xl font-bold text-choco-900 mb-5">🛒 Order Summary</h2>
               <div className="space-y-3 mb-5 max-h-[300px] overflow-y-auto">
                 {items.map((item) => (
@@ -243,86 +391,28 @@ const Checkout = () => {
                 </div>
                 <div className="flex justify-between text-sm text-choco-700">
                   <span>Delivery fee</span>
-                  <span className={deliveryFee === 0 ? 'text-green-600 font-medium' : ''}>
-                    {deliveryFee === 0 ? '✓ Free' : `₹${deliveryFee}`}
+                  <span className={deliveryFee === 0 ? 'text-emerald-700 font-bold' : ''}>
+                    {isTakeaway ? '₹0 (Self Pickup 🎉)' : (deliveryFee === 0 ? 'Free' : `₹${deliveryFee}`)}
                   </span>
                 </div>
                 <div className="flex justify-between font-bold text-choco-900 text-xl border-t border-choco-100 pt-3 mt-2">
                   <span>Total</span>
-                  <span className="font-display">₹{totalAmount}</span>
+                  <span className="font-display text-2xl">₹{totalAmount}</span>
                 </div>
               </div>
             </div>
 
-            {/* Payment Method Selector */}
-            <div className="bg-white rounded-2xl shadow-sm border border-choco-100 p-6 mb-4">
+            {/* ─── 3 Payment Method Options ─────────────────────── */}
+            <div className="bg-white rounded-3xl shadow-sm border border-choco-100 p-6 mb-4">
               <h2 className="font-display text-lg font-bold text-choco-900 mb-4">💳 Payment Method</h2>
-              
+
               <div className="space-y-3">
-                {/* Online Payment Option */}
-                <label
-                  onClick={() => setPaymentMethod('online')}
-                  className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer ${
-                    paymentMethod === 'online'
-                      ? 'border-amber-600 bg-amber-50/40 shadow-sm'
-                      : 'border-choco-100 hover:border-choco-300 bg-white'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="online"
-                    checked={paymentMethod === 'online'}
-                    onChange={() => setPaymentMethod('online')}
-                    className="mt-1 accent-amber-700"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-choco-900 text-sm">Online Payment (Instant & Secure)</span>
-                      <span className="text-xs bg-emerald-100 text-emerald-800 font-medium px-2 py-0.5 rounded-full">Recommended</span>
-                    </div>
-                    <p className="text-xs text-choco-500 mt-1">
-                      Pay via PhonePe, Paytm, Google Pay, BHIM UPI, Cards, or Net Banking
-                    </p>
-
-                    {/* PhonePe / Paytm / GPay Number Highlight */}
-                    <div className="mt-3 p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200/80 shadow-2xs">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div>
-                          <p className="text-xs font-semibold text-choco-900">PhonePe / Paytm / GPay Number</p>
-                          <p className="font-mono font-bold text-amber-950 text-base tracking-wider">8185920511</p>
-                        </div>
-                        <div className="flex gap-1.5 items-center">
-                          <img src="/payments/phonepe.png" alt="PhonePe" className="w-5 h-5 object-contain" />
-                          <img src="/payments/paytm.png" alt="Paytm" className="w-5 h-5 object-contain" />
-                          <img src="/payments/gpay.png" alt="GPay" className="w-5 h-5 object-contain" />
-                          <img src="/payments/navi.png" alt="Navi" className="w-5 h-5 object-contain" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 mt-2.5 flex-wrap items-center">
-                      {[
-                        { name: 'PhonePe', icon: '/payments/phonepe.png' },
-                        { name: 'Google Pay', icon: '/payments/gpay.png' },
-                        { name: 'Paytm', icon: '/payments/paytm.png' },
-                        { name: 'Navi Pay', icon: '/payments/navi.png' },
-                      ].map((m) => (
-                        <span key={m.name} className="text-[11px] bg-white text-choco-900 font-semibold px-2 py-1 rounded-lg border border-choco-200 shadow-2xs flex items-center gap-1.5">
-                          <img src={m.icon} alt={m.name} className="w-3.5 h-3.5 object-contain" />
-                          {m.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </label>
-
-                {/* Cash on Delivery Option */}
+                {/* 1. Cash on Delivery */}
                 <label
                   onClick={() => setPaymentMethod('cod')}
-                  className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                  className={`flex items-start gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
                     paymentMethod === 'cod'
-                      ? 'border-choco-700 bg-choco-50/60 shadow-sm'
+                      ? 'border-choco-800 bg-choco-50/70 shadow-sm'
                       : 'border-choco-100 hover:border-choco-300 bg-white'
                   }`}
                 >
@@ -336,11 +426,94 @@ const Checkout = () => {
                   />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-choco-900 text-sm">Cash on Delivery (COD)</span>
-                      <span className="text-xs bg-choco-100 text-choco-800 font-medium px-2 py-0.5 rounded-full">Pay at Doorstep</span>
+                      <span className="font-bold text-choco-900 text-sm flex items-center gap-1.5">
+                        <span>💵</span> Cash on Delivery (COD)
+                      </span>
+                      <span className="text-xs bg-choco-100 text-choco-800 font-bold px-2.5 py-0.5 rounded-full">
+                        Pay at Doorstep
+                      </span>
                     </div>
                     <p className="text-xs text-choco-500 mt-1">
-                      Pay in cash when your fresh homemade chocolates arrive
+                      Pay in cash when your fresh handcrafted chocolates arrive at your door
+                    </p>
+                  </div>
+                </label>
+
+                {/* 2. Online Payment (Pre-paid) */}
+                <label
+                  onClick={() => setPaymentMethod('online')}
+                  className={`flex items-start gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                    paymentMethod === 'online'
+                      ? 'border-amber-600 bg-amber-50/50 shadow-sm'
+                      : 'border-choco-100 hover:border-choco-300 bg-white'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="online"
+                    checked={paymentMethod === 'online'}
+                    onChange={() => setPaymentMethod('online')}
+                    className="mt-1 accent-amber-700"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-choco-900 text-sm flex items-center gap-1.5">
+                        <span>💳</span> Online Payment (Pre-paid)
+                      </span>
+                      <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">
+                        Pre-paid Fast
+                      </span>
+                    </div>
+                    <p className="text-xs text-choco-500 mt-1">
+                      Pay instantly via PhonePe, Paytm, Google Pay, BHIM UPI, Cards, or Gateway
+                    </p>
+
+                    <div className="mt-3 p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200/80 shadow-2xs">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                          <p className="text-xs font-bold text-choco-900">UPI Payment Number</p>
+                          <p className="font-mono font-bold text-amber-950 text-base tracking-wider">8185920511</p>
+                        </div>
+                        <div className="flex gap-1.5 items-center">
+                          <img src="/payments/phonepe.png" alt="PhonePe" className="w-5 h-5 object-contain" />
+                          <img src="/payments/paytm.png" alt="Paytm" className="w-5 h-5 object-contain" />
+                          <img src="/payments/gpay.png" alt="GPay" className="w-5 h-5 object-contain" />
+                          <img src="/payments/navi.png" alt="Navi" className="w-5 h-5 object-contain" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </label>
+
+                {/* 3. Take Away Option */}
+                <label
+                  onClick={() => setPaymentMethod('takeaway')}
+                  className={`flex items-start gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                    paymentMethod === 'takeaway'
+                      ? 'border-emerald-600 bg-emerald-50/50 shadow-sm'
+                      : 'border-choco-100 hover:border-choco-300 bg-white'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="takeaway"
+                    checked={paymentMethod === 'takeaway'}
+                    onChange={() => setPaymentMethod('takeaway')}
+                    className="mt-1 accent-emerald-700"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-choco-900 text-sm flex items-center gap-1.5">
+                        <span>🛍️</span> Take Away (Self Pickup)
+                      </span>
+                      <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">
+                        Free Delivery ₹0
+                      </span>
+                    </div>
+                    <p className="text-xs text-choco-500 mt-1">
+                      Pick up your fresh order directly at NS Choco Delight store. Zero delivery fee!
                     </p>
                   </div>
                 </label>
@@ -351,18 +524,20 @@ const Checkout = () => {
               onClick={handlePlaceOrder}
               disabled={paying}
               id="pay-now-btn"
-              className={paymentMethod === 'online' ? 'btn-gold w-full py-4 text-base text-center font-bold shadow-md' : 'btn-primary w-full py-4 text-base text-center font-bold shadow-md'}
+              className="btn-gold w-full py-4 text-base text-center font-bold shadow-gold"
             >
               {paying ? (
                 <span className="flex items-center justify-center gap-2">
                   <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                   </svg>
                   Processing Order...
                 </span>
               ) : paymentMethod === 'online' ? (
-                `💳 Pay ₹${totalAmount} via PhonePe / Paytm / GPay (8185920511)`
+                `💳 Pay ₹${totalAmount} via Online Pre-paid (8185920511)`
+              ) : paymentMethod === 'takeaway' ? (
+                `🛍️ Place Order for Take Away (₹${totalAmount})`
               ) : (
                 `📦 Place Order with Cash on Delivery (₹${totalAmount})`
               )}
