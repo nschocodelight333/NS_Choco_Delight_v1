@@ -21,16 +21,23 @@ const Products = () => {
   const [pages, setPages] = useState(1);
   const [filterOpen, setFilterOpen] = useState(false);
 
-  // Filter state driven from URL params
-  const [filters, setFilters] = useState({
+  // Keep filters state in sync with URL searchParams
+  const getFiltersFromUrl = () => ({
     search: searchParams.get('search') || '',
     category: searchParams.get('category') || '',
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
     rating: searchParams.get('rating') || '',
     sort: searchParams.get('sort') || 'newest',
-    page: parseInt(searchParams.get('page') || '1'),
+    page: parseInt(searchParams.get('page') || '1') || 1,
   });
+
+  const [filters, setFilters] = useState(getFiltersFromUrl);
+
+  // Sync state if URL changes externally
+  useEffect(() => {
+    setFilters(getFiltersFromUrl());
+  }, [searchParams.toString()]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -46,11 +53,22 @@ const Products = () => {
       params.limit = 12;
 
       const res = await getProducts(params);
-      setProducts(res.data.products || []);
-      setTotal(res.data.total || 0);
-      setPages(res.data.pages || 1);
+      const fetchedProducts = res.data.products || [];
+      const fetchedTotal = res.data.total || 0;
+      const fetchedPages = res.data.pages || 1;
+
+      if (fetchedTotal > 0 && fetchedProducts.length === 0 && filters.page > 1) {
+        setFilters((prev) => ({ ...prev, page: 1 }));
+        return;
+      }
+
+      setProducts(fetchedProducts);
+      setTotal(fetchedTotal);
+      setPages(fetchedPages);
     } catch (err) {
+      console.error('Failed to fetch products:', err);
       setProducts([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -58,18 +76,20 @@ const Products = () => {
 
   useEffect(() => {
     fetchProducts();
-    // Sync filters to URL
-    const params = {};
-    Object.entries(filters).forEach(([k, v]) => { if (v) params[k] = v; });
-    setSearchParams(params, { replace: true });
-  }, [filters, fetchProducts]);
+  }, [fetchProducts]);
 
   const updateFilter = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+    const updated = { ...filters, [key]: value, page: 1 };
+    setFilters(updated);
+    const params = {};
+    Object.entries(updated).forEach(([k, v]) => { if (v) params[k] = v; });
+    setSearchParams(params, { replace: true });
   };
 
   const clearFilters = () => {
-    setFilters({ search: '', category: '', minPrice: '', maxPrice: '', rating: '', sort: 'newest', page: 1 });
+    const reset = { search: '', category: '', minPrice: '', maxPrice: '', rating: '', sort: 'newest', page: 1 };
+    setFilters(reset);
+    setSearchParams({ sort: 'newest', page: '1' }, { replace: true });
   };
 
   const hasActiveFilters = filters.search || filters.category || filters.minPrice || filters.maxPrice || filters.rating;

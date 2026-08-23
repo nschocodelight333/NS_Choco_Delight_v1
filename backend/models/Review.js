@@ -41,8 +41,11 @@ reviewSchema.index({ product: 1, user: 1 }, { unique: true });
 
 // Static method to recalculate average rating on Product
 reviewSchema.statics.calcAverageRating = async function (productId) {
+  if (!productId) return;
+  const prodId = typeof productId === 'string' ? new mongoose.Types.ObjectId(productId) : productId;
+
   const stats = await this.aggregate([
-    { $match: { product: productId } },
+    { $match: { product: prodId } },
     {
       $group: {
         _id: '$product',
@@ -55,7 +58,7 @@ reviewSchema.statics.calcAverageRating = async function (productId) {
   const Product = mongoose.model('Product');
   if (stats.length > 0) {
     await Product.findByIdAndUpdate(productId, {
-      ratingAverage: stats[0].avgRating,
+      ratingAverage: Math.round(stats[0].avgRating * 10) / 10,
       numReviews: stats[0].numReviews,
     });
   } else {

@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import BackButton from '../../components/BackButton';
 
 const adminNavLinks = [
   { to: '/admin', label: 'Dashboard', icon: '📊', end: true },
@@ -7,6 +8,7 @@ const adminNavLinks = [
   { to: '/admin/campaigns', label: 'Campaigns', icon: '🎉' },
   { to: '/admin/orders', label: 'Orders', icon: '📦' },
   { to: '/admin/custom-requests', label: 'Custom Requests', icon: '✏️' },
+  { to: '/admin/reviews', label: 'Reviews', icon: '⭐' },
   { to: '/admin/customers', label: 'Customers', icon: '👥' },
 ];
 
@@ -110,6 +112,7 @@ const AdminLayout = () => {
         </div>
 
         <div className="p-6 md:p-8">
+          <BackButton />
           <Outlet />
         </div>
       </main>

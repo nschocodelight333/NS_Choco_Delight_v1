@@ -35,7 +35,7 @@ const OrderConfirmation = () => {
     );
   }
 
-  const statusSteps = ['Pending', 'Confirmed', 'Preparing', 'Out for Delivery', 'Delivered'];
+  const statusSteps = ['Pending', 'Confirmed', 'Preparing', 'Prepared', 'Out for Delivery', 'Delivered'];
   const currentStep = statusSteps.indexOf(order.orderStatus);
 
   return (

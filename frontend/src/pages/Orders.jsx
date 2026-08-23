@@ -8,6 +8,7 @@ const STATUS_COLORS = {
   Pending: 'badge-pending',
   Confirmed: 'badge-confirmed',
   Preparing: 'badge-preparing',
+  Prepared: 'badge-prepared',
   'Out for Delivery': 'badge-delivery',
   Delivered: 'badge-delivered',
   Cancelled: 'badge-cancelled',
@@ -99,9 +100,13 @@ const Orders = () => {
                     <Link
                       to={`/orders/${order._id}`}
                       id={`view-order-${order._id}`}
-                      className="ml-2 btn-secondary py-2 px-4 text-xs whitespace-nowrap"
+                      className={
+                        order.orderStatus === 'Delivered'
+                          ? 'ml-2 bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold py-2 px-3.5 rounded-xl border border-amber-300 text-xs whitespace-nowrap transition-colors shadow-2xs flex items-center gap-1'
+                          : 'ml-2 btn-secondary py-2 px-4 text-xs whitespace-nowrap'
+                      }
                     >
-                      View Details →
+                      {order.orderStatus === 'Delivered' ? '⭐ Review Items →' : 'View Details →'}
                     </Link>
                   </div>
                 </div>

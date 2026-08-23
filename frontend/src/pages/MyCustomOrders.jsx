@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { getImageUrl } from '../utils/imageUrl';
 import { getMyCustomOrders, respondToQuote, checkoutCustomOrder } from '../api/customOrders';
 
 const STATUS_STYLES = {
@@ -81,7 +82,7 @@ const CheckoutModal = ({ request, onClose, onConverted }) => {
             <div className="grid grid-cols-2 gap-3">
               {[
                 { value: 'cod', icon: '💵', label: 'Cash on Delivery' },
-                { value: 'upi', icon: '📱', label: 'UPI / Razorpay' },
+                { value: 'upi', icon: '📱', label: 'PhonePe / Paytm / GPay' },
               ].map((m) => (
                 <button key={m.value} type="button" onClick={() => setPaymentMethod(m.value)}
                   className={`flex flex-col items-center gap-1 px-4 py-3 rounded-xl border-2 transition-all ${paymentMethod === m.value ? 'border-choco-800 bg-choco-50' : 'border-choco-100 hover:border-choco-300'}`}>
@@ -91,9 +92,13 @@ const CheckoutModal = ({ request, onClose, onConverted }) => {
               ))}
             </div>
             {paymentMethod === 'upi' && (
-              <p className="text-xs text-choco-400 mt-2 text-center">
-                You'll be redirected to Razorpay to complete UPI payment.
-              </p>
+              <div className="mt-3 p-3 bg-amber-50 rounded-xl border border-amber-200 text-center">
+                <p className="text-xs font-semibold text-choco-900">PhonePe / Paytm / GPay Number</p>
+                <p className="font-mono font-bold text-amber-950 text-base my-0.5 tracking-wider">8185920511</p>
+                <p className="text-[11px] text-choco-500">
+                  Pay via PhonePe, Paytm, Google Pay, or Razorpay Gateway
+                </p>
+              </div>
             )}
           </div>
 
@@ -172,7 +177,11 @@ const MyCustomOrders = () => {
       p.map((r) => (r._id === checkoutRequest?._id ? { ...r, status: 'Converted to Order' } : r))
     );
     setCheckoutRequest(null);
-    navigate(`/orders`);
+    if (order.paymentInfo?.status === 'pending' || order.paymentInfo?.status !== 'cod') {
+      navigate(`/online-payment/${order._id}`, { replace: true });
+    } else {
+      navigate(`/orders`, { replace: true });
+    }
   };
 
   return (
@@ -220,8 +229,12 @@ const MyCustomOrders = () => {
                       <p className="text-choco-400 text-xs mt-1">Submitted: {formatDate(r.createdAt)}</p>
                     </div>
                     {r.referenceImageUrls?.length > 0 && (
-                      <div className="flex-shrink-0">
-                        <img src={r.referenceImageUrls[0]} alt="" className="w-16 h-16 rounded-xl object-cover border border-choco-100" />
+                      <div className="flex flex-wrap gap-1 flex-shrink-0">
+                        {r.referenceImageUrls.map((url, imgIdx) => (
+                          <a key={imgIdx} href={getImageUrl(url)} target="_blank" rel="noopener noreferrer">
+                            <img src={getImageUrl(url)} alt={`Reference ${imgIdx + 1}`} className="w-16 h-16 rounded-xl object-cover border border-choco-100 shadow-sm" />
+                          </a>
+                        ))}
                       </div>
                     )}
                   </div>

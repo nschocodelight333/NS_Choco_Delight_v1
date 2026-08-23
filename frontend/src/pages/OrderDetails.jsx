@@ -1,26 +1,53 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getOrder } from '../api/orders';
+import { checkCanReview } from '../api/products';
+import ReviewModal from '../components/ReviewModal';
 
 const STATUS_COLORS = {
   Pending: 'badge-pending',
   Confirmed: 'badge-confirmed',
   Preparing: 'badge-preparing',
+  Prepared: 'badge-prepared',
   'Out for Delivery': 'badge-delivery',
   Delivered: 'badge-delivered',
   Cancelled: 'badge-cancelled',
 };
 
-const statusSteps = ['Pending', 'Confirmed', 'Preparing', 'Out for Delivery', 'Delivered'];
+const statusSteps = ['Pending', 'Confirmed', 'Preparing', 'Prepared', 'Out for Delivery', 'Delivered'];
 
 const OrderDetails = () => {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [reviewedMap, setReviewedMap] = useState({});
+  const [reviewingItem, setReviewingItem] = useState(null);
 
   useEffect(() => {
     getOrder(id)
-      .then((res) => setOrder(res.data.order))
+      .then(async (res) => {
+        const fetchedOrder = res.data.order;
+        setOrder(fetchedOrder);
+
+        // If order is delivered, check review status for each item
+        if (fetchedOrder && fetchedOrder.orderStatus === 'Delivered') {
+          const map = {};
+          for (const item of fetchedOrder.items) {
+            const pId = item.product?._id || item.product;
+            if (pId) {
+              try {
+                const canRes = await checkCanReview(pId);
+                if (canRes.data.reason === 'already_reviewed') {
+                  map[pId] = true;
+                }
+              } catch (err) {
+                // Ignore silent check errors
+              }
+            }
+          }
+          setReviewedMap(map);
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [id]);
@@ -76,6 +103,66 @@ const OrderDetails = () => {
           </p>
         </div>
 
+        {/* Top Review Banner for Delivered Orders */}
+        {order.orderStatus === 'Delivered' && (
+          <div className="bg-gradient-to-r from-amber-950 via-choco-900 to-amber-900 text-cream rounded-3xl p-6 shadow-xl mb-6 border border-amber-600/40 relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-amber-800/60">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xl">🎉</span>
+                  <span className="text-xs font-bold text-gold-400 uppercase tracking-wider">Order Delivered!</span>
+                </div>
+                <h2 className="text-xl font-display font-bold text-white">How were your chocolates?</h2>
+                <p className="text-xs text-choco-200 mt-0.5">Share your review for your delivered items</p>
+              </div>
+              <span className="bg-emerald-500/20 text-emerald-300 text-xs font-bold px-3 py-1.5 rounded-full border border-emerald-400/30 shrink-0">
+                ✓ Verified Purchase
+              </span>
+            </div>
+
+            {/* Delivered items review quick list */}
+            <div className="pt-4 space-y-3">
+              {order.items.map((item, idx) => {
+                const productId = item.product?._id || item.product;
+                const isReviewed = reviewedMap[productId];
+
+                return (
+                  <div key={idx} className="flex items-center justify-between bg-white/10 backdrop-blur-xs rounded-2xl p-3 border border-white/10">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl overflow-hidden bg-choco-900 shrink-0">
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-lg">🍫</div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-white text-sm truncate">{item.name}</p>
+                        <p className="text-[11px] text-choco-200">₹{item.price} × {item.quantity}</p>
+                      </div>
+                    </div>
+
+                    {isReviewed ? (
+                      <span className="text-xs font-semibold text-emerald-300 bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-500/40 shrink-0">
+                        ✓ Reviewed
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setReviewingItem(item)}
+                        id={`top-review-btn-${idx}`}
+                        className="text-xs font-bold text-choco-950 bg-gold-400 hover:bg-gold-300 px-4 py-2 rounded-xl transition-all shadow-md shrink-0 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span>⭐</span> Write Review
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Status Tracker */}
         {order.orderStatus !== 'Cancelled' && (
           <div className="bg-white rounded-2xl shadow-sm border border-choco-100 p-6 mb-6">
@@ -100,24 +187,49 @@ const OrderDetails = () => {
 
         {/* Items */}
         <div className="bg-white rounded-2xl shadow-sm border border-choco-100 p-6 mb-6">
-          <h2 className="font-semibold text-choco-900 mb-4">Items</h2>
+          <h2 className="font-semibold text-choco-900 mb-4">Items Ordered</h2>
           <div className="space-y-3">
-            {order.items.map((item, i) => (
-              <div key={i} className="flex items-center gap-3 py-2 border-b border-choco-50 last:border-0">
-                <div className="w-14 h-14 rounded-xl overflow-hidden bg-choco-50 flex-shrink-0">
-                  {item.image
-                    ? <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                    : <div className="w-full h-full flex items-center justify-center text-2xl">🍫</div>
-                  }
+            {order.items.map((item, i) => {
+              const productId = item.product?._id || item.product;
+              const isDelivered = order.orderStatus === 'Delivered';
+              const isReviewed = reviewedMap[productId];
+
+              return (
+                <div key={i} className="flex items-center gap-3 py-3 border-b border-choco-50 last:border-0">
+                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-choco-50 flex-shrink-0">
+                    {item.image
+                      ? <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-2xl">🍫</div>
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-choco-900 text-sm truncate">{item.name}</p>
+                    {item.shape && <p className="text-xs text-choco-400">{item.shape} Shape</p>}
+                    <p className="text-xs text-choco-500">₹{item.price} × {item.quantity}</p>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <span className="font-bold text-choco-900 text-sm">₹{item.price * item.quantity}</span>
+                    {isDelivered && (
+                      isReviewed ? (
+                        <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                          ✓ Reviewed
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setReviewingItem(item)}
+                          id={`review-item-btn-${i}`}
+                          className="text-[11px] font-bold text-amber-950 bg-amber-200 hover:bg-amber-300 px-2.5 py-1 rounded-xl border border-amber-400 transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>⭐</span> Write Review
+                        </button>
+                      )
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium text-choco-900 text-sm">{item.name}</p>
-                  {item.shape && <p className="text-xs text-choco-400">{item.shape} Shape</p>}
-                  <p className="text-xs text-choco-500">₹{item.price} × {item.quantity}</p>
-                </div>
-                <span className="font-bold text-choco-900">₹{item.price * item.quantity}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div className="pt-4 space-y-2">
             <div className="flex justify-between text-sm text-choco-600">
@@ -159,6 +271,21 @@ const OrderDetails = () => {
           )}
         </div>
       </div>
+
+      {reviewingItem && (
+        <ReviewModal
+          productId={reviewingItem.product?._id || reviewingItem.product}
+          productName={reviewingItem.name}
+          productImage={reviewingItem.image}
+          onClose={() => setReviewingItem(null)}
+          onSuccess={() => {
+            const pId = reviewingItem.product?._id || reviewingItem.product;
+            if (pId) {
+              setReviewedMap((prev) => ({ ...prev, [pId]: true }));
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -100,6 +100,10 @@
     @apply badge bg-purple-100 text-purple-800;
   }
 
+  .badge-prepared {
+    @apply badge bg-teal-100 text-teal-800;
+  }
+
   .badge-delivery {
     @apply badge bg-orange-100 text-orange-800;
   }

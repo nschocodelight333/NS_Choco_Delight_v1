@@ -1,62 +1,74 @@
 const mongoose = require('mongoose');
 
-// Sub-schema for hampers (combo bundles)
-const hamperSchema = new mongoose.Schema({
-  name: { type: String, required: true, trim: true },
-  description: { type: String, default: '' },
-  imageUrl: { type: String, default: '' },
-  price: { type: Number, required: true, min: 0 },
-  stock: { type: Number, default: 0, min: 0 },
-  includedItems: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
-});
+const slugify = (text) => {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/[\s\W-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+};
 
 const campaignSchema = new mongoose.Schema(
   {
-    title: {
+    occasionName: {
       type: String,
-      required: [true, 'Campaign title is required'],
+      required: [true, 'Occasion name is required'],
       trim: true,
     },
-    occasion: {
+    slug: {
       type: String,
-      enum: ['Valentines', 'MothersDay', 'FathersDay', 'Diwali', 'Christmas', 'Eid', 'NewYear', 'Custom'],
-      default: 'Custom',
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
     },
-    description: {
+    emoji: {
       type: String,
-      default: '',
+      default: '🎉',
+    },
+    themeColors: {
+      primary: { type: String, default: '#7C2D12' },
+      secondary: { type: String, default: '#D97706' },
+      background: { type: String, default: '#FFFBEB' },
     },
     bannerImageUrl: {
       type: String,
       default: '',
     },
+    description: {
+      type: String,
+      default: '',
+    },
     startDate: {
       type: Date,
-      required: [true, 'Start date is required'],
+      default: null,
     },
     endDate: {
       type: Date,
-      required: [true, 'End date is required'],
+      default: null,
     },
-    isActive: {
-      type: Boolean,
-      default: true,
+    status: {
+      type: String,
+      enum: ['draft', 'published', 'archived'],
+      default: 'draft',
     },
-    // Individual products featured under this campaign
-    products: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
-    // Hamper bundles
-    hampers: [hamperSchema],
+    products: {
+      special: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+      hampers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+      customWrappers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+      normal: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+    },
   },
   { timestamps: true }
 );
 
-// Virtual to compute display status
-campaignSchema.virtual('status').get(function () {
-  const now = new Date();
-  if (!this.isActive) return 'Inactive';
-  if (now < this.startDate) return 'Scheduled';
-  if (now > this.endDate) return 'Expired';
-  return 'Active';
+// Pre-validate hook to generate slug if missing
+campaignSchema.pre('validate', function (next) {
+  if (this.occasionName && !this.slug) {
+    this.slug = slugify(this.occasionName);
+  }
+  next();
 });
 
 campaignSchema.set('toJSON', { virtuals: true });

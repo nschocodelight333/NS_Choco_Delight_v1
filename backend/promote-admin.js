@@ -2,7 +2,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const User = require('./models/User');
 
-const EMAIL = 'grandhinagasai@gmail.com';
+const EMAIL = process.argv[2] || process.env.PROMOTE_EMAIL || 'grandhinagasai@gmail.com';
 
 const promoteToAdmin = async () => {
   try {

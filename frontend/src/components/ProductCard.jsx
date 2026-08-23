@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useCart } from '../context/CartContext';
+import { getImageUrl } from '../utils/imageUrl';
 import StarRating from './StarRating';
 
 const CHOCO_PLACEHOLDER = 'https://images.unsplash.com/photo-1481391319762-47dff72954d9?w=400&q=80';
@@ -15,7 +16,7 @@ const ProductCard = ({ product }) => {
     await addItem(product._id, 1, defaultShape);
   };
 
-  const imageUrl = product.images?.[0] || CHOCO_PLACEHOLDER;
+  const imageUrl = getImageUrl(product.images?.[0]) || CHOCO_PLACEHOLDER;
 
   return (
     <motion.div
@@ -34,7 +35,7 @@ const ProductCard = ({ product }) => {
           />
           {/* Category Badge */}
           <span className="absolute top-3 left-3 badge bg-choco-800/80 text-cream backdrop-blur-sm text-[10px]">
-            {product.category === 'Bites' ? '🍬 Bite' : '🍫 Chocolate'}
+            {product.category === 'Bites' ? '🍬 Bite' : '🍫 Bar'}
           </span>
           {product.isFeatured && (
             <span className="absolute top-3 right-3 badge bg-gold-gradient text-choco-900 text-[10px] shadow-gold">

@@ -17,13 +17,19 @@ export const AuthProvider = ({ children }) => {
     if (token) {
       getMe()
         .then((res) => {
-          setUser(res.data.user);
-          localStorage.setItem('user', JSON.stringify(res.data.user));
+          if (res.data?.user) {
+            setUser(res.data.user);
+            localStorage.setItem('user', JSON.stringify(res.data.user));
+          }
         })
-        .catch(() => {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          setUser(null);
+        .catch((err) => {
+          // ONLY clear session if backend explicitly returned 401/403 (expired/invalid token).
+          // Network errors or temporary 500s will keep the cached user session intact.
+          if (err.response?.status === 401 || err.response?.status === 403) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setUser(null);
+          }
         })
         .finally(() => setLoading(false));
     } else {

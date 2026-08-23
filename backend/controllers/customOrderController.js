@@ -13,8 +13,15 @@ const submitCustomOrder = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Title and description are required.' });
   }
 
-  // Handle uploaded reference images
-  const referenceImageUrls = req.files ? req.files.map((f) => f.path) : [];
+  // Handle uploaded reference images (Cloudinary URL or local static URL)
+  const referenceImageUrls = req.files
+    ? req.files.map((f) => {
+        if (f.path && (f.path.startsWith('http://') || f.path.startsWith('https://'))) {
+          return f.path;
+        }
+        return `/uploads/${f.filename}`;
+      })
+    : [];
 
   const request = await CustomOrderRequest.create({
     userId: req.user._id,

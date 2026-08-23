@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
+import { buildWhatsAppUrl } from '../utils/whatsapp';
+import { getImageUrl } from '../utils/imageUrl';
 import { getProducts } from '../api/products';
-import { getActiveCampaigns } from '../api/campaigns';
+import { getPublishedCampaigns } from '../api/campaigns';
 import ProductCard from '../components/ProductCard';
 import { ProductCardSkeleton } from '../components/SkeletonLoader';
+import CampaignPoster from '../components/CampaignPoster';
 
 const categories = [
   {
@@ -24,6 +28,7 @@ const categories = [
 ];
 
 const Home = () => {
+  const { user } = useAuth();
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [activeCampaigns, setActiveCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +38,7 @@ const Home = () => {
       .then((res) => setFeaturedProducts(res.data.products || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-    getActiveCampaigns()
+    getPublishedCampaigns()
       .then((res) => setActiveCampaigns(res.data.campaigns || []))
       .catch(() => {});
   }, []);
@@ -74,7 +79,7 @@ const Home = () => {
                   Shop Now →
                 </Link>
                 <a
-                  href="https://wa.me/918185920511?text=Hi! I'd like to order chocolates from NS Choco Delight."
+                  href={buildWhatsAppUrl(user?.name)}
                   target="_blank"
                   rel="noopener noreferrer"
                   id="hero-whatsapp-btn"
@@ -137,62 +142,67 @@ const Home = () => {
 
       {/* ─── Active Campaign Banners ─────────────────────────── */}
       {activeCampaigns.length > 0 && (
-        <section className="py-8 bg-cream">
+        <section className="py-10 bg-cream">
           <div className="page-container">
-            <div className="space-y-4">
+            <div className="text-center mb-6">
+              <h2 className="section-title">🎉 Special Occasions & Festivals</h2>
+              <p className="section-subtitle">Exclusive seasonal collections handcrafted for your celebrations</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {activeCampaigns.map((campaign, i) => {
-                const EMOJIS = { Valentines: '💗', MothersDay: '🌸', FathersDay: '👔', Diwali: '🪔', Christmas: '🎄', Eid: '🌙', NewYear: '🎆', Custom: '🎉' };
-                const emoji = EMOJIS[campaign.occasion] || '🎉';
+                const theme = campaign.themeColors || { primary: '#7C2D12', secondary: '#D97706', background: '#FFFBEB' };
+                const emoji = campaign.emoji || '🎉';
+                const targetUrl = campaign.slug ? `/occasions/${campaign.slug}` : '/special-occasions';
+
                 return (
                   <motion.div
                     key={campaign._id}
-                    initial={{ opacity: 0, y: -10 }}
+                    initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1, duration: 0.5 }}
-                    className="relative overflow-hidden rounded-3xl"
+                    whileHover={{ y: -4 }}
+                    className="relative overflow-hidden rounded-3xl border border-choco-200 shadow-choco hover:shadow-2xl transition-all duration-300 flex flex-col justify-between"
                   >
                     {campaign.bannerImageUrl ? (
-                      <div className="relative">
-                        <img src={campaign.bannerImageUrl} alt={campaign.title} className="w-full h-32 sm:h-40 object-cover rounded-3xl" />
-                        <div className="absolute inset-0 bg-choco-900/50 rounded-3xl" />
-                        <div className="absolute inset-0 flex items-center justify-between px-6 sm:px-10">
-                          <div>
-                            <p className="text-gold-400 text-xs font-semibold uppercase tracking-widest mb-1">Special Occasion</p>
-                            <h3 className="font-display text-xl sm:text-2xl font-bold text-cream">{emoji} {campaign.title}</h3>
-                            {campaign.description && (
-                              <p className="text-choco-200 text-sm mt-1 hidden sm:block line-clamp-1">{campaign.description}</p>
-                            )}
-                          </div>
-                          <Link
-                            to={`/campaigns/${campaign._id}`}
-                            id={`campaign-banner-${campaign._id}`}
-                            className="flex-shrink-0 btn-gold text-sm px-6 py-2.5"
-                          >
-                            Shop Now →
-                          </Link>
-                        </div>
+                      <div className="h-56 relative w-full overflow-hidden">
+                        <img
+                          src={getImageUrl(campaign.bannerImageUrl)}
+                          alt={campaign.occasionName}
+                          onError={(e) => { e.currentTarget.parentElement.style.display = 'none'; }}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                     ) : (
-                      <div className="bg-gradient-to-r from-choco-900 via-choco-800 to-choco-700 rounded-3xl px-6 sm:px-10 py-5 sm:py-7 flex items-center justify-between gap-4">
+                      <div style={{ backgroundColor: theme.background }} className="p-6 sm:p-8 relative">
                         <div className="flex items-center gap-4">
-                          <span className="text-4xl sm:text-5xl">{emoji}</span>
+                          <span className="text-5xl drop-shadow-md">{emoji}</span>
                           <div>
-                            <p className="text-gold-400 text-xs font-semibold uppercase tracking-widest mb-0.5">Special Occasion</p>
-                            <h3 className="font-display text-xl sm:text-2xl font-bold text-cream">{campaign.title}</h3>
+                            <p style={{ color: theme.secondary }} className="text-xs font-bold uppercase tracking-wider mb-1">
+                              Special Occasion
+                            </p>
+                            <h3 style={{ color: theme.primary }} className="font-display text-2xl font-bold">
+                              {campaign.occasionName}
+                            </h3>
                             {campaign.description && (
-                              <p className="text-choco-200 text-sm mt-1 hidden sm:block line-clamp-1">{campaign.description}</p>
+                              <p className="text-choco-600 text-sm mt-1 line-clamp-2">{campaign.description}</p>
                             )}
                           </div>
                         </div>
-                        <Link
-                          to={`/campaigns/${campaign._id}`}
-                          id={`campaign-banner-${campaign._id}`}
-                          className="flex-shrink-0 btn-gold text-sm px-6 py-2.5"
-                        >
-                          Shop Now →
-                        </Link>
                       </div>
                     )}
+
+                    <div className="bg-white px-6 py-4 flex items-center justify-between border-t border-choco-100">
+                      <span className="text-xs font-bold text-choco-600">
+                        ✨ Exclusive Festival Collection
+                      </span>
+                      <Link
+                        to={targetUrl}
+                        id={`campaign-banner-${campaign._id}`}
+                        className="btn-gold text-xs px-5 py-2.5 font-bold rounded-xl shadow-xs"
+                      >
+                        Explore {campaign.occasionName} →
+                      </Link>
+                    </div>
                   </motion.div>
                 );
               })}

@@ -1,25 +1,52 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { getOrders, updateOrderStatus, createManualOrder } from '../../api/orders';
 import { getProducts } from '../../api/products';
+import { getAllCustomOrders } from '../../api/customOrders';
+import { getImageUrl } from '../../utils/imageUrl';
 import toast from 'react-hot-toast';
 
 const STATUS_COLORS = {
   Pending: 'badge-pending',
+  'Pending Review': 'badge-pending',
   Confirmed: 'badge-confirmed',
   Preparing: 'badge-preparing',
+  Prepared: 'badge-prepared',
   'Out for Delivery': 'badge-delivery',
   Delivered: 'badge-delivered',
+  Quoted: 'badge-confirmed',
+  Accepted: 'badge-delivered',
+  Rejected: 'badge-cancelled',
   Cancelled: 'badge-cancelled',
 };
 
-const ORDER_STATUSES = ['Pending', 'Confirmed', 'Preparing', 'Out for Delivery', 'Delivered', 'Cancelled'];
+const ORDER_STATUSES = ['Pending', 'Confirmed', 'Preparing', 'Prepared', 'Out for Delivery', 'Delivered', 'Cancelled'];
 
 const AdminOrders = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || '');
+  const [filterSource, setFilterSource] = useState('all'); // 'all' | 'website' | 'whatsapp' | 'custom'
+  const [sortOrder, setSortOrder] = useState('newest'); // 'newest' | 'oldest' | 'amount-high' | 'amount-low'
+  const [orderSearch, setOrderSearch] = useState('');
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(null);
+
+  // Sync URL search params with filterStatus
+  useEffect(() => {
+    const urlStatus = searchParams.get('status') || '';
+    setFilterStatus(urlStatus);
+  }, [searchParams]);
+
+  const handleSelectStatusFilter = (status) => {
+    setFilterStatus(status);
+    if (status) {
+      setSearchParams({ status });
+    } else {
+      setSearchParams({});
+    }
+  };
 
   // Modal / Form States
   const [showModal, setShowModal] = useState(false);
@@ -57,8 +84,38 @@ const AdminOrders = () => {
     try {
       const params = { all: true };
       if (filterStatus) params.status = filterStatus;
-      const res = await getOrders(params);
-      setOrders(res.data.orders || []);
+
+      const [ordersRes, customRes] = await Promise.all([
+        getOrders(params).catch(() => ({ data: { orders: [] } })),
+        getAllCustomOrders().catch(() => ({ data: { requests: [] } })),
+      ]);
+
+      const standardOrders = ordersRes.data?.orders || [];
+      const customRequests = customRes.data?.requests || [];
+
+      // Normalize custom requests into order format for unified view
+      const normalizedCustom = customRequests.map((c) => ({
+        _id: c._id,
+        isCustomRequest: true,
+        orderSource: 'custom',
+        orderStatus: c.status,
+        totalAmount: c.quotedPrice || 0,
+        createdAt: c.createdAt,
+        user: c.userId ? { name: c.userId.name, email: c.userId.email, phone: c.userId.phone } : { name: 'Customer' },
+        items: [
+          {
+            name: c.title,
+            description: c.description,
+            price: c.quotedPrice || 0,
+            quantity: 1,
+          },
+        ],
+        referenceImageUrls: c.referenceImageUrls || [],
+        notes: `Custom Order Specs: ${c.description}`,
+      }));
+
+      const combined = [...standardOrders, ...normalizedCustom];
+      setOrders(combined);
     } catch {
       toast.error('Failed to load orders');
     } finally {
@@ -175,12 +232,55 @@ const AdminOrders = () => {
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const getProcessedOrders = () => {
+    let list = [...orders];
+
+    if (filterSource !== 'all') {
+      list = list.filter((o) => (o.orderSource || 'website') === filterSource);
+    }
+
+    if (filterStatus) {
+      list = list.filter((o) => o.orderStatus === filterStatus);
+    }
+
+    if (orderSearch.trim()) {
+      const q = orderSearch.toLowerCase().trim();
+      list = list.filter((o) => {
+        // 1. Order ID match (full mongo ID or truncated #HEX)
+        const matchId = o._id?.toLowerCase().includes(q) || `#${o._id?.slice(-8).toLowerCase()}`.includes(q);
+
+        // 2. Customer Name, Email, or Phone match
+        const userName = (o.user?.name || o.guestCustomer?.name || '').toLowerCase();
+        const userEmail = (o.user?.email || '').toLowerCase();
+        const userPhone = (o.user?.phone || o.guestCustomer?.phone || o.deliveryAddress?.phone || '').toLowerCase();
+        const matchUser = userName.includes(q) || userEmail.includes(q) || userPhone.includes(q);
+
+        // 3. Product Name match in items array
+        const matchProduct = o.items?.some((item) => item.name?.toLowerCase().includes(q));
+
+        return matchId || matchUser || matchProduct;
+      });
+    }
+
+    list.sort((a, b) => {
+      if (sortOrder === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
+      if (sortOrder === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+      if (sortOrder === 'amount-high') return (b.totalAmount || 0) - (a.totalAmount || 0);
+      if (sortOrder === 'amount-low') return (a.totalAmount || 0) - (b.totalAmount || 0);
+      return 0;
+    });
+
+    return list;
+  };
+
+  const processedOrders = getProcessedOrders();
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold text-choco-900">Orders</h1>
-          <p className="text-choco-500 mt-1">{orders.length} orders</p>
+          <p className="text-choco-500 mt-1">{processedOrders.length} orders shown ({orders.length} total)</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
@@ -190,25 +290,89 @@ const AdminOrders = () => {
         </button>
       </div>
 
-      {/* Filter by status */}
-      <div className="flex gap-2 flex-wrap">
-        <button
-          onClick={() => setFilterStatus('')}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${!filterStatus ? 'bg-choco-800 text-cream' : 'bg-white text-choco-700 border border-choco-200 hover:border-choco-400'}`}
-          id="filter-all-orders"
-        >
-          All
-        </button>
-        {ORDER_STATUSES.map((status) => (
+      {/* Filter and Search Controls */}
+      <div className="bg-white rounded-2xl p-4 border border-choco-100 shadow-sm space-y-3">
+        {/* Search Bar Input */}
+        <div className="relative">
+          <input
+            type="text"
+            value={orderSearch}
+            onChange={(e) => setOrderSearch(e.target.value)}
+            placeholder="Search orders by Product Name, Customer Name, Phone, or Order ID (#1234)..."
+            className="input-field pl-10 pr-10 py-2.5 text-sm bg-choco-50/50 border-choco-200 focus:bg-white focus:border-choco-500"
+            id="admin-order-search"
+          />
+          <svg className="w-4 h-4 text-choco-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          {orderSearch && (
+            <button
+              onClick={() => setOrderSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-choco-400 hover:text-choco-900 text-xs font-bold w-5 h-5 rounded-full bg-choco-100 flex items-center justify-center transition-colors"
+              title="Clear search"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Order Source Tabs & Sort Dropdown */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-choco-100 pb-3">
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { id: 'all', label: 'All Orders' },
+              { id: 'website', label: '🌐 Website' },
+              { id: 'whatsapp', label: '💬 WhatsApp' },
+              { id: 'custom', label: '🎨 Custom Requests' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setFilterSource(tab.id)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                  filterSource === tab.id
+                    ? 'bg-choco-800 text-cream shadow-sm'
+                    : 'bg-choco-50 text-choco-700 hover:bg-choco-100'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <label className="text-xs font-medium text-choco-500">Sort By:</label>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="text-xs bg-choco-50 border border-choco-200 rounded-xl px-3 py-1.5 font-semibold text-choco-800 focus:outline-none"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="amount-high">Amount: High → Low</option>
+              <option value="amount-low">Amount: Low → High</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Filter by Status */}
+        <div className="flex items-center gap-2 flex-wrap pt-1">
+          <span className="text-xs font-semibold text-choco-700 mr-1">Filter Status:</span>
           <button
-            key={status}
-            onClick={() => setFilterStatus(status)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${filterStatus === status ? 'bg-choco-800 text-cream' : 'bg-white text-choco-700 border border-choco-200 hover:border-choco-400'}`}
-            id={`filter-status-${status.replace(/\s+/g, '-').toLowerCase()}`}
+            onClick={() => handleSelectStatusFilter('')}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${!filterStatus ? 'bg-choco-900 text-cream font-bold shadow-xs' : 'bg-white text-choco-600 border border-choco-200 hover:border-choco-400'}`}
           >
-            {status}
+            All
           </button>
-        ))}
+          {ORDER_STATUSES.map((status) => (
+            <button
+              key={status}
+              onClick={() => handleSelectStatusFilter(status)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${filterStatus === status ? 'bg-choco-900 text-cream font-bold shadow-xs' : 'bg-white text-choco-600 border border-choco-200 hover:border-choco-400'}`}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
@@ -217,14 +381,14 @@ const AdminOrders = () => {
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-choco-100 overflow-hidden">
-          {orders.length === 0 ? (
+          {processedOrders.length === 0 ? (
             <div className="text-center py-12 text-choco-400">
               <span className="text-5xl block mb-3">📦</span>
-              <p>No orders found{filterStatus ? ` with status "${filterStatus}"` : ''}.</p>
+              <p>No orders matching filters.</p>
             </div>
           ) : (
             <div className="divide-y divide-choco-50">
-              {orders.map((order) => (
+              {processedOrders.map((order) => (
                 <div key={order._id} className="p-5">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     {/* Order Info */}
@@ -239,7 +403,11 @@ const AdminOrders = () => {
                         {order.paymentInfo?.status === 'cod' && (
                           <span className="badge bg-orange-100 text-orange-700">COD</span>
                         )}
-                        {order.orderSource === 'whatsapp' ? (
+                        {order.orderSource === 'custom' ? (
+                          <span className="badge bg-pink-50 text-pink-700 border border-pink-200 font-semibold flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full">
+                            🎨 Custom Request
+                          </span>
+                        ) : order.orderSource === 'whatsapp' ? (
                           <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full">
                             💬 WhatsApp
                           </span>
@@ -257,8 +425,8 @@ const AdminOrders = () => {
                         </>
                       ) : (
                         <>
-                          <p className="font-semibold text-choco-900">{order.user?.name}</p>
-                          <p className="text-choco-500 text-xs">{order.user?.email} · {order.user?.phone}</p>
+                          <p className="font-semibold text-choco-900">{order.user?.name || 'Customer'}</p>
+                          <p className="text-choco-500 text-xs">{order.user?.email} · {order.user?.phone || 'Customer Account'}</p>
                         </>
                       )}
                       <p className="text-choco-400 text-xs mt-1">
@@ -268,8 +436,10 @@ const AdminOrders = () => {
 
                     {/* Amount */}
                     <div className="text-center">
-                      <p className="font-display text-xl font-bold text-choco-900">₹{order.totalAmount}</p>
-                      <p className="text-choco-400 text-xs">{order.items.length} items</p>
+                      <p className="font-display text-xl font-bold text-choco-900">
+                        {order.totalAmount > 0 ? `₹${order.totalAmount}` : 'Quote Pending'}
+                      </p>
+                      <p className="text-choco-400 text-xs">{order.items?.length || 1} items</p>
                     </div>
 
                     {/* Status Update + Expand */}

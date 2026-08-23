@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
+import { buildWhatsAppUrl } from '../utils/whatsapp';
 
 const Contact = () => {
+  const { user } = useAuth();
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [sent, setSent] = useState(false);
 
   const receiverEmail = 'skshafiullashakhadar@gmail.com';
-  const whatsappNumber = '918185920511';
 
   // Construct mailto URL for direct email client opening
   const buildMailtoUrl = (name, email, msg) => {
@@ -15,14 +17,6 @@ const Contact = () => {
       `Hello NS Choco Delight Team,\n\n${msg}\n\n-------------------------\nCustomer Name: ${name}\nCustomer Email: ${email}\n-------------------------`
     );
     return `mailto:${receiverEmail}?subject=${subject}&body=${body}`;
-  };
-
-  // Construct WhatsApp URL
-  const buildWhatsAppUrl = (name, email, msg) => {
-    const text = encodeURIComponent(
-      `Hi NS Choco Delight! I'm ${name} (${email}).\n\n${msg || "I'd like to inquire about your chocolates."}`
-    );
-    return `https://wa.me/${whatsappNumber}?text=${text}`;
   };
 
   const handleSubmit = (e) => {
@@ -54,7 +48,7 @@ const Contact = () => {
             <div className="space-y-6">
               {/* WhatsApp Card */}
               <a
-                href={buildWhatsAppUrl('Customer', '', '')}
+                href={buildWhatsAppUrl(user?.name || 'Customer')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-start gap-4 p-5 bg-white hover:bg-emerald-50/50 rounded-2xl shadow-sm border border-choco-100 hover:border-emerald-300 transition-all group cursor-pointer block"
@@ -100,7 +94,7 @@ const Contact = () => {
 
             {/* Quick Action Button: WhatsApp */}
             <a
-              href={buildWhatsAppUrl('Customer', '', '')}
+              href={buildWhatsAppUrl(form.name || user?.name || 'Customer', form.message)}
               target="_blank"
               rel="noopener noreferrer"
               id="contact-whatsapp-btn"
@@ -136,7 +130,7 @@ const Contact = () => {
                     Re-open Email App
                   </a>
                   <a
-                    href={buildWhatsAppUrl(form.name || 'Customer', form.email, form.message)}
+                    href={buildWhatsAppUrl(form.name || user?.name || 'Customer', form.message)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs py-2.5 px-4 rounded-xl transition-colors inline-flex items-center justify-center gap-1.5"
@@ -201,7 +195,7 @@ const Contact = () => {
                   </button>
 
                   <a
-                    href={buildWhatsAppUrl(form.name || 'Customer', form.email, form.message)}
+                    href={buildWhatsAppUrl(form.name || user?.name || 'Customer', form.message)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 text-sm"

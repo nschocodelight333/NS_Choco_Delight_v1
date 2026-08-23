@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { buildWhatsAppUrl } from '../utils/whatsapp';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -24,7 +25,7 @@ const Footer = () => {
             </p>
             {/* WhatsApp */}
             <a
-              href="https://wa.me/918185920511?text=Hi! I'd like to order chocolates from NS Choco Delight."
+              href={buildWhatsAppUrl()}
               target="_blank"
               rel="noopener noreferrer"
               id="footer-whatsapp-link"

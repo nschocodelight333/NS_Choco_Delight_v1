@@ -208,34 +208,32 @@ const products = [
   },
 ];
 
+const seedProducts = async (isFresh = false) => {
+  if (isFresh) {
+    await Product.deleteMany({});
+    console.log('🗑️  Cleared all existing products');
+    await Product.insertMany(products);
+    console.log(`🍫 Seeded ${products.length} products successfully!`);
+  } else {
+    let inserted = 0;
+    for (const p of products) {
+      const exists = await Product.findOne({ name: p.name });
+      if (!exists) {
+        await Product.create(p);
+        inserted++;
+      }
+    }
+    console.log(`🍫 Seeded ${inserted} new products (Total catalog: ${products.length}).`);
+  }
+};
+
 const seed = async () => {
   const isFresh = process.argv.includes('--fresh');
-
   try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log('✅ Connected to MongoDB');
-
-    if (isFresh) {
-      await Product.deleteMany({});
-      console.log('🗑️  --fresh flag: cleared all existing products');
-      await Product.insertMany(products);
-      console.log(`🍫 Seeded ${products.length} products successfully!`);
-    } else {
-      // Safe upsert: only insert products whose name doesn't already exist
-      let inserted = 0;
-      for (const p of products) {
-        const exists = await Product.findOne({ name: p.name });
-        if (!exists) {
-          await Product.create(p);
-          inserted++;
-          console.log(`  ✅ Added: ${p.name}`);
-        } else {
-          console.log(`  ⏭️  Skipped (already exists): ${p.name}`);
-        }
-      }
-      console.log(`\n🍫 Done! ${inserted} new products added, ${products.length - inserted} skipped.`);
-    }
-
+    const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/choco-delight';
+    await mongoose.connect(uri);
+    console.log('✅ Connected to MongoDB for seeding');
+    await seedProducts(isFresh);
     await mongoose.disconnect();
     console.log('👋 Disconnected from MongoDB');
     process.exit(0);
@@ -245,4 +243,8 @@ const seed = async () => {
   }
 };
 
-seed();
+if (require.main === module) {
+  seed();
+}
+
+module.exports = { seedProducts, products };
