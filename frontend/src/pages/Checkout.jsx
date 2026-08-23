@@ -24,7 +24,7 @@ const Checkout = () => {
   });
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [selectedSavedIdx, setSelectedSavedIdx] = useState('0');
-  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online' | 'cod' | 'takeaway'
+  const [paymentMethod, setPaymentMethod] = useState('cod'); // 'online' | 'cod' | 'takeaway'
   const [paying, setPaying] = useState(false);
 
   useEffect(() => {
@@ -95,6 +95,8 @@ const Checkout = () => {
   };
 
   const isTakeaway = paymentMethod === 'takeaway';
+
+  // Take away option waives delivery fee completely (Product Amount Only!)
   const deliveryFee = isTakeaway ? 0 : (cartTotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE);
   const totalAmount = cartTotal + deliveryFee;
 
@@ -232,15 +234,68 @@ const Checkout = () => {
   return (
     <div className="py-10 min-h-screen bg-cream/30">
       <div className="page-container max-w-5xl mx-auto">
-        <h1 className="section-title mb-8">Checkout</h1>
+        <h1 className="section-title mb-6">Checkout</h1>
+
+        {/* ─── Fulfillment Type Switcher (Home Delivery vs Take Away) ─── */}
+        <div className="bg-white rounded-3xl shadow-sm border border-choco-100 p-6 mb-8">
+          <h2 className="font-display text-lg font-bold text-choco-900 mb-3">
+            🛍️ Select Fulfillment Option
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                if (isTakeaway) setPaymentMethod('cod');
+              }}
+              className={`flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all ${
+                !isTakeaway
+                  ? 'border-choco-800 bg-choco-50/70 shadow-sm'
+                  : 'border-choco-100 hover:border-choco-300 bg-white'
+              }`}
+            >
+              <span className="text-3xl">🚚</span>
+              <div>
+                <p className="font-bold text-choco-900 text-sm">Home Delivery</p>
+                <p className="text-xs text-choco-500 mt-0.5">
+                  Delivered to your address (₹40 fee / Free on orders ≥ ₹500)
+                </p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPaymentMethod('takeaway')}
+              className={`flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all ${
+                isTakeaway
+                  ? 'border-emerald-600 bg-emerald-50/70 shadow-sm'
+                  : 'border-choco-100 hover:border-choco-300 bg-white'
+              }`}
+            >
+              <span className="text-3xl">🛍️</span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-emerald-950 text-sm">Take Away (Self Pickup)</p>
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                    No Delivery Fee (₹0)
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-700 mt-0.5">
+                  Pick up at store — pay product amount only!
+                </p>
+              </div>
+            </button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           {/* ─── Delivery Address ─────────────────────── */}
           <div>
             <div className="bg-white rounded-3xl shadow-sm border border-choco-100 p-6 space-y-4">
               <div className="flex items-center justify-between border-b border-choco-100 pb-3">
-                <h2 className="font-display text-xl font-bold text-choco-900">📍 Delivery Address</h2>
-                <span className="text-xs text-choco-500 font-medium">Auto-filled from Profile</span>
+                <h2 className="font-display text-xl font-bold text-choco-900">
+                  {isTakeaway ? '🛍️ Pickup Store Details' : '📍 Delivery Address'}
+                </h2>
+                {!isTakeaway && <span className="text-xs text-choco-500 font-medium">Auto-filled from Profile</span>}
               </div>
 
               {/* Saved Address Selection Dropdown */}
@@ -265,14 +320,19 @@ const Checkout = () => {
               )}
 
               {isTakeaway ? (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center space-y-2">
-                  <span className="text-4xl block">🛍️</span>
-                  <h3 className="font-display font-bold text-emerald-900 text-lg">Self Pickup at Store</h3>
-                  <p className="text-xs text-emerald-700 leading-relaxed">
-                    You chose <strong>Take Away</strong>. You can pick up your fresh order directly at NS Choco Delight store. Delivery address is waived!
-                  </p>
-                  <div className="pt-2">
-                    <label className="label text-xs text-left">Mobile Number for Pickup SMS *</label>
+                <div className="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-5 text-center space-y-3">
+                  <span className="text-5xl block">🛍️</span>
+                  <div>
+                    <h3 className="font-display font-bold text-emerald-950 text-lg">
+                      Store Pickup Selected
+                    </h3>
+                    <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
+                      Delivery charges are <strong>₹0 (Waived)</strong>! Only product price (₹{cartTotal}) will be charged. Pick up your fresh order directly at NS Choco Delight Store.
+                    </p>
+                  </div>
+
+                  <div className="pt-2 text-left">
+                    <label className="label text-xs">Mobile Number for Pickup Confirmation *</label>
                     <input
                       id="checkout-phone-takeaway"
                       name="phone"
@@ -392,7 +452,7 @@ const Checkout = () => {
                 <div className="flex justify-between text-sm text-choco-700">
                   <span>Delivery fee</span>
                   <span className={deliveryFee === 0 ? 'text-emerald-700 font-bold' : ''}>
-                    {isTakeaway ? '₹0 (Self Pickup 🎉)' : (deliveryFee === 0 ? 'Free' : `₹${deliveryFee}`)}
+                    {isTakeaway ? '₹0 (Take Away / Free 🎉)' : (deliveryFee === 0 ? 'Free' : `₹${deliveryFee}`)}
                   </span>
                 </div>
                 <div className="flex justify-between font-bold text-choco-900 text-xl border-t border-choco-100 pt-3 mt-2">
@@ -469,20 +529,22 @@ const Checkout = () => {
                       Pay instantly via PhonePe, Paytm, Google Pay, BHIM UPI, Cards, or Gateway
                     </p>
 
-                    <div className="mt-3 p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200/80 shadow-2xs">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div>
-                          <p className="text-xs font-bold text-choco-900">UPI Payment Number</p>
-                          <p className="font-mono font-bold text-amber-950 text-base tracking-wider">8185920511</p>
-                        </div>
-                        <div className="flex gap-1.5 items-center">
-                          <img src="/payments/phonepe.png" alt="PhonePe" className="w-5 h-5 object-contain" />
-                          <img src="/payments/paytm.png" alt="Paytm" className="w-5 h-5 object-contain" />
-                          <img src="/payments/gpay.png" alt="GPay" className="w-5 h-5 object-contain" />
-                          <img src="/payments/navi.png" alt="Navi" className="w-5 h-5 object-contain" />
+                    {paymentMethod === 'online' && (
+                      <div className="mt-3 p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200/80 shadow-2xs">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div>
+                            <p className="text-xs font-bold text-choco-900">UPI Payment Number</p>
+                            <p className="font-mono font-bold text-amber-950 text-base tracking-wider">8185920511</p>
+                          </div>
+                          <div className="flex gap-1.5 items-center">
+                            <img src="/payments/phonepe.png" alt="PhonePe" className="w-5 h-5 object-contain" />
+                            <img src="/payments/paytm.png" alt="Paytm" className="w-5 h-5 object-contain" />
+                            <img src="/payments/gpay.png" alt="GPay" className="w-5 h-5 object-contain" />
+                            <img src="/payments/navi.png" alt="Navi" className="w-5 h-5 object-contain" />
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </label>
 
@@ -509,11 +571,11 @@ const Checkout = () => {
                         <span>🛍️</span> Take Away (Self Pickup)
                       </span>
                       <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">
-                        Free Delivery ₹0
+                        Zero Delivery Fee (₹0)
                       </span>
                     </div>
                     <p className="text-xs text-choco-500 mt-1">
-                      Pick up your fresh order directly at NS Choco Delight store. Zero delivery fee!
+                      Pick up your fresh order directly at NS Choco Delight store. Only product amount (₹{cartTotal}) charged!
                     </p>
                   </div>
                 </label>
@@ -537,7 +599,7 @@ const Checkout = () => {
               ) : paymentMethod === 'online' ? (
                 `💳 Pay ₹${totalAmount} via Online Pre-paid (8185920511)`
               ) : paymentMethod === 'takeaway' ? (
-                `🛍️ Place Order for Take Away (₹${totalAmount})`
+                `🛍️ Place Order for Take Away — Product Amount Only (₹${totalAmount})`
               ) : (
                 `📦 Place Order with Cash on Delivery (₹${totalAmount})`
               )}
