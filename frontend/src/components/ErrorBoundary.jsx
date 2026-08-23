@@ -3,7 +3,7 @@ import React from 'react';
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error) {
@@ -11,40 +11,37 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    this.setState({ errorInfo });
-    console.error('🚨 Global React Error Boundary caught an exception:', error, errorInfo);
+    console.error('UI Error Boundary caught an error:', error, errorInfo);
   }
 
   handleReload = () => {
-    window.location.reload();
+    localStorage.clear();
+    window.location.href = '/';
   };
 
   render() {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-cream flex items-center justify-center p-6 text-center">
-          <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-choco-lg border border-choco-100 space-y-4">
-            <span className="text-6xl block mb-2">🍫 Oops!</span>
-            <h1 className="font-display text-2xl font-bold text-choco-900">
-              Something went wrong
-            </h1>
+          <div className="bg-white rounded-3xl p-8 max-w-md shadow-2xl border border-choco-100 space-y-4">
+            <span className="text-6xl block">🍫</span>
+            <h2 className="font-display font-bold text-choco-900 text-2xl">Something went wrong</h2>
             <p className="text-choco-600 text-sm leading-relaxed">
-              An unexpected error occurred. Don't worry, your cart and session data are safe.
+              An unexpected display issue occurred. Don't worry, clicking below will safely reset your session and reload the page.
             </p>
-
-            {process.env.NODE_ENV === 'development' && this.state.error && (
-              <div className="text-left bg-red-50 p-3 rounded-xl border border-red-200 text-xs font-mono text-red-800 overflow-x-auto max-h-36">
-                {this.state.error.toString()}
-              </div>
-            )}
-
-            <div className="flex justify-center gap-3 pt-2">
-              <button onClick={this.handleReload} className="btn-gold py-2.5 px-6 text-sm font-bold">
+            <div className="pt-2 flex flex-col gap-2">
+              <button
+                onClick={() => window.location.reload()}
+                className="btn-gold w-full py-3 text-sm font-bold shadow-xs"
+              >
                 🔄 Reload Page
               </button>
-              <a href="/" className="btn-secondary py-2.5 px-6 text-sm font-bold">
-                🏠 Back to Home
-              </a>
+              <button
+                onClick={this.handleReload}
+                className="btn-secondary w-full py-2.5 text-xs font-semibold"
+              >
+                🧹 Clear Session & Go Home
+              </button>
             </div>
           </div>
         </div>

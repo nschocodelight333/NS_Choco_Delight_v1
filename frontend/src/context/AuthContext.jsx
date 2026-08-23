@@ -6,8 +6,14 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem('user');
-    return stored ? JSON.parse(stored) : null;
+    try {
+      const stored = localStorage.getItem('user');
+      return stored && stored !== 'undefined' && stored !== 'null' ? JSON.parse(stored) : null;
+    } catch (e) {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      return null;
+    }
   });
   const [loading, setLoading] = useState(true);
 
@@ -24,7 +30,6 @@ export const AuthProvider = ({ children }) => {
         })
         .catch((err) => {
           // ONLY clear session if backend explicitly returned 401/403 (expired/invalid token).
-          // Network errors or temporary 500s will keep the cached user session intact.
           if (err.response?.status === 401 || err.response?.status === 403) {
             localStorage.removeItem('token');
             localStorage.removeItem('user');

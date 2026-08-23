@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 
 const Login = () => {
-  const { login } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/';
@@ -14,16 +14,26 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
 
+  useEffect(() => {
+    if (user) {
+      navigate(user.role === 'admin' ? '/admin' : from, { replace: true });
+    }
+  }, [user, navigate, from]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const user = await login(form.email.trim(), form.password);
-      toast.success(`Welcome back, ${user.name.split(' ')[0]}! 🍫`);
-      navigate(user.role === 'admin' ? '/admin' : from, { replace: true });
+      const loggedUser = await login(form.email.trim(), form.password);
+      toast.success(`Welcome back, ${loggedUser.name ? loggedUser.name.split(' ')[0] : 'User'}! 🍫`);
+      navigate(loggedUser.role === 'admin' ? '/admin' : from, { replace: true });
     } catch (err) {
       console.error('Login error:', err.response?.data || err.message);
-      const msg = err.response?.data?.message || (err.message?.includes('Network Error') ? 'Server connection error. Please ensure backend is running.' : 'Login failed. Check your credentials.');
+      const msg =
+        err.response?.data?.message ||
+        (err.message?.includes('Network Error')
+          ? 'Server connection error. Please ensure backend is running.'
+          : 'Login failed. Check your credentials.');
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -51,7 +61,9 @@ const Login = () => {
           <form onSubmit={handleSubmit} id="login-form">
             <div className="space-y-5">
               <div>
-                <label className="label" htmlFor="login-email">Email</label>
+                <label className="label" htmlFor="login-email">
+                  Email
+                </label>
                 <input
                   id="login-email"
                   type="email"
@@ -64,7 +76,9 @@ const Login = () => {
                 />
               </div>
               <div>
-                <label className="label" htmlFor="login-password">Password</label>
+                <label className="label" htmlFor="login-password">
+                  Password
+                </label>
                 <div className="relative">
                   <input
                     id="login-password"
@@ -96,10 +110,15 @@ const Login = () => {
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
                   Signing in...
                 </span>
-              ) : 'Sign In'}
+              ) : (
+                'Sign In'
+              )}
             </button>
           </form>
 
