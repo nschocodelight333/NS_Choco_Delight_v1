@@ -2,10 +2,10 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Capacitor } from '@capacitor/core';
-import { App as CapApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Layout components
 import Navbar from './components/Navbar';
@@ -123,28 +123,30 @@ function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <CartProvider>
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 3000,
-              style: {
-                background: '#3E2723',
-                color: '#FFF8F0',
-                borderRadius: '12px',
-                fontSize: '14px',
-                fontFamily: 'Inter, sans-serif',
-              },
-              success: { iconTheme: { primary: '#C9A063', secondary: '#3E2723' } },
-              error: { iconTheme: { primary: '#ef4444', secondary: '#FFF8F0' } },
-            }}
-          />
-          <AppContent />
-        </CartProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <CartProvider>
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 3000,
+                style: {
+                  background: '#3E2723',
+                  color: '#FFF8F0',
+                  borderRadius: '12px',
+                  fontSize: '14px',
+                  fontFamily: 'Inter, sans-serif',
+                },
+                success: { iconTheme: { primary: '#C9A063', secondary: '#3E2723' } },
+                error: { iconTheme: { primary: '#ef4444', secondary: '#FFF8F0' } },
+              }}
+            />
+            <AppContent />
+          </CartProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 
