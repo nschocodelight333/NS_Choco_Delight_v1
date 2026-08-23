@@ -12,5 +12,7 @@ export const deleteCampaign = (id) => api.delete(`/admin/campaigns/${id}`);
 // Public
 export const getPublishedCampaigns = () => api.get('/campaigns');
 export const getActiveCampaigns = getPublishedCampaigns; // Alias for backwards compatibility
+export const getUpcomingCampaigns = () => api.get('/campaigns/upcoming');
+export const checkHasActiveCampaigns = () => api.get('/campaigns/has-active');
 export const getCampaignBySlug = (slug) => api.get(`/campaigns/${slug}`);
 export const getCampaign = (id) => api.get(`/campaigns/${id}`);

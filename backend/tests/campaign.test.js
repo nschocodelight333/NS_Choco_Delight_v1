@@ -6,14 +6,16 @@ const Product = require('../models/Product');
 
 jest.setTimeout(30000);
 
-describe('Special Occasion Campaign Pages - End-to-End Date & Publish Safeguards', () => {
+describe('Special Occasion Campaign Pages - Status Published Sole Gate', () => {
   let draftCampaign;
   let publishedCampaign;
   let todayPublishedCampaign;
-  let expiredCampaign;
+  let upcomingCampaign;
   let testProduct;
 
-  const todayStr = new Date().toISOString().slice(0, 10); // e.g. "2026-08-23"
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const futureDate = new Date();
+  futureDate.setDate(futureDate.getDate() + 10); // 10 days in future
 
   beforeAll(async () => {
     testProduct = await Product.create({
@@ -25,7 +27,7 @@ describe('Special Occasion Campaign Pages - End-to-End Date & Publish Safeguards
     });
 
     draftCampaign = await Campaign.create({
-      occasionName: "Test Draft Occasion 🌹",
+      occasionName: 'Test Draft Occasion 🌹',
       slug: 'test-draft-occasion',
       emoji: '🌹',
       description: 'Unpublished draft tagline',
@@ -39,7 +41,7 @@ describe('Special Occasion Campaign Pages - End-to-End Date & Publish Safeguards
     });
 
     publishedCampaign = await Campaign.create({
-      occasionName: "Test Published Festival 🪔",
+      occasionName: 'Test Published Festival 🪔',
       slug: 'test-published-festival',
       emoji: '🪔',
       description: 'Live festival collection',
@@ -52,10 +54,6 @@ describe('Special Occasion Campaign Pages - End-to-End Date & Publish Safeguards
       },
     });
 
-    // Test campaign published TODAY with endDate set to today's date string
-    const endDateObj = new Date(todayStr);
-    endDateObj.setHours(23, 59, 59, 999);
-
     todayPublishedCampaign = await Campaign.create({
       occasionName: "New Year's Day 🎉",
       slug: 'new-year-s-day-test',
@@ -63,14 +61,15 @@ describe('Special Occasion Campaign Pages - End-to-End Date & Publish Safeguards
       description: 'New year celebration collection',
       status: 'published',
       startDate: new Date(todayStr),
-      endDate: endDateObj,
     });
 
-    expiredCampaign = await Campaign.create({
-      occasionName: 'Test Expired Festival',
-      slug: 'test-expired-festival',
+    upcomingCampaign = await Campaign.create({
+      occasionName: 'Test Upcoming Festival 🧸',
+      slug: 'test-upcoming-festival',
+      emoji: '🧸',
+      description: 'Upcoming festival starting soon',
       status: 'published',
-      endDate: new Date(Date.now() - 86400000), // 1 day in the past
+      startDate: futureDate,
     });
   }, 30000);
 
@@ -78,12 +77,12 @@ describe('Special Occasion Campaign Pages - End-to-End Date & Publish Safeguards
     if (draftCampaign) await Campaign.findByIdAndDelete(draftCampaign._id);
     if (publishedCampaign) await Campaign.findByIdAndDelete(publishedCampaign._id);
     if (todayPublishedCampaign) await Campaign.findByIdAndDelete(todayPublishedCampaign._id);
-    if (expiredCampaign) await Campaign.findByIdAndDelete(expiredCampaign._id);
+    if (upcomingCampaign) await Campaign.findByIdAndDelete(upcomingCampaign._id);
     if (testProduct) await Product.findByIdAndDelete(testProduct._id);
     await mongoose.connection.close();
   }, 30000);
 
-  test('Public GET /api/campaigns returns published campaign live TODAY (endDate set to today date)', async () => {
+  test('Public GET /api/campaigns returns ALL published campaigns regardless of startDate/endDate', async () => {
     const res = await request(app).get('/api/campaigns');
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
@@ -91,8 +90,15 @@ describe('Special Occasion Campaign Pages - End-to-End Date & Publish Safeguards
     const slugs = res.body.campaigns.map((c) => c.slug);
     expect(slugs).toContain('new-year-s-day-test');
     expect(slugs).toContain('test-published-festival');
-    expect(slugs).not.toContain('test-draft-occasion');
-    expect(slugs).not.toContain('test-expired-festival');
+    expect(slugs).toContain('test-upcoming-festival'); // Included because status === 'published'
+    expect(slugs).not.toContain('test-draft-occasion'); // Excluded because status === 'draft'
+  });
+
+  test('Public GET /api/campaigns/has-active returns true when published campaigns exist', async () => {
+    const res = await request(app).get('/api/campaigns/has-active');
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.hasActive).toBe(true);
   });
 
   test('Public GET /api/campaigns/:slug returns 404 for DRAFT campaign', async () => {
@@ -101,16 +107,10 @@ describe('Special Occasion Campaign Pages - End-to-End Date & Publish Safeguards
     expect(res.body.success).toBe(false);
   });
 
-  test('Public GET /api/campaigns/:slug returns 404 for EXPIRED campaign', async () => {
-    const res = await request(app).get('/api/campaigns/test-expired-festival');
-    expect(res.statusCode).toBe(404);
-    expect(res.body.success).toBe(false);
-  });
-
-  test('Public GET /api/campaigns/:slug returns 200 for campaign published TODAY', async () => {
-    const res = await request(app).get('/api/campaigns/new-year-s-day-test');
+  test('Public GET /api/campaigns/:slug returns 200 for ANY published campaign (including future startDate)', async () => {
+    const res = await request(app).get('/api/campaigns/test-upcoming-festival');
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.campaign.occasionName).toBe("New Year's Day 🎉");
+    expect(res.body.campaign.occasionName).toBe('Test Upcoming Festival 🧸');
   });
 });
