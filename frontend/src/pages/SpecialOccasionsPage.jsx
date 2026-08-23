@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { getPublishedCampaigns, getCampaignBySlug } from '../api/campaigns';
 import { getImageUrl } from '../utils/imageUrl';
 import ProductCard from '../components/ProductCard';
-import CampaignPoster from '../components/CampaignPoster';
 
 const SpecialOccasionsPage = () => {
   const { slug } = useParams();
@@ -38,9 +37,12 @@ const SpecialOccasionsPage = () => {
       // All Published Campaigns Grid View
       getPublishedCampaigns()
         .then((res) => {
-          setAllCampaigns(res.data.campaigns || []);
+          setAllCampaigns(res.data?.campaigns || []);
         })
-        .catch(() => setAllCampaigns([]))
+        .catch((err) => {
+          console.error('Error loading published campaigns:', err);
+          setAllCampaigns([]);
+        })
         .finally(() => setLoading(false));
     }
   }, [slug]);
@@ -149,9 +151,9 @@ const SpecialOccasionsPage = () => {
         <div className="page-container py-12 space-y-14 max-w-6xl mx-auto">
           {/* Section 1: Special Collection */}
           {specialProducts.length > 0 && (
-            <section className="space-y-6">
-              <div className="flex items-center gap-3 border-b-2 border-[var(--theme-primary)] pb-3">
-                <span className="text-3xl">✨</span>
+            <section>
+              <div className="flex items-center gap-3 mb-6 border-b pb-3 border-choco-200">
+                <span className="text-2xl">✨</span>
                 <div>
                   <h2 style={{ color: theme.primary }} className="font-display text-2xl font-bold">
                     Special Collection
@@ -159,29 +161,29 @@ const SpecialOccasionsPage = () => {
                   <p className="text-choco-600 text-xs">Exclusive handcrafted occasion creations</p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {specialProducts.map((p) => (
-                  <ProductCard key={p._id} product={p} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {specialProducts.map((product) => (
+                  <ProductCard key={product._id} product={product} />
                 ))}
               </div>
             </section>
           )}
 
-          {/* Section 2: Hampers */}
+          {/* Section 2: Hampers & Combos */}
           {hamperProducts.length > 0 && (
-            <section className="space-y-6">
-              <div className="flex items-center gap-3 border-b-2 border-[var(--theme-primary)] pb-3">
-                <span className="text-3xl">🎁</span>
+            <section>
+              <div className="flex items-center gap-3 mb-6 border-b pb-3 border-choco-200">
+                <span className="text-2xl">🎁</span>
                 <div>
                   <h2 style={{ color: theme.primary }} className="font-display text-2xl font-bold">
-                    Gift Hampers
+                    Gourmet Hampers & Combos
                   </h2>
-                  <p className="text-choco-600 text-xs">Curated gift boxes & combo bundles</p>
+                  <p className="text-choco-600 text-xs">Curated gift boxes & special hampers</p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {hamperProducts.map((p) => (
-                  <ProductCard key={p._id} product={p} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {hamperProducts.map((product) => (
+                  <ProductCard key={product._id} product={product} />
                 ))}
               </div>
             </section>
@@ -189,60 +191,79 @@ const SpecialOccasionsPage = () => {
 
           {/* Section 3: Customized Wrappers */}
           {wrapperProducts.length > 0 && (
-            <section className="space-y-6">
-              <div className="flex items-center gap-3 border-b-2 border-[var(--theme-primary)] pb-3">
-                <span className="text-3xl">🎀</span>
+            <section>
+              <div className="flex items-center gap-3 mb-6 border-b pb-3 border-choco-200">
+                <span className="text-2xl">🏷️</span>
                 <div>
                   <h2 style={{ color: theme.primary }} className="font-display text-2xl font-bold">
                     Customized Wrappers
                   </h2>
-                  <p className="text-choco-600 text-xs">Personalized wrappers for special memories</p>
+                  <p className="text-choco-600 text-xs">Personalized wrappers for this celebration</p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {wrapperProducts.map((p) => (
-                  <ProductCard key={p._id} product={p} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {wrapperProducts.map((product) => (
+                  <ProductCard key={product._id} product={product} />
                 ))}
               </div>
             </section>
           )}
 
-          {/* Section 4: Everyday Favorites */}
+          {/* Section 4: All Popular Chocolates */}
           {normalProducts.length > 0 && (
-            <section className="space-y-6">
-              <div className="flex items-center gap-3 border-b-2 border-[var(--theme-primary)] pb-3">
-                <span className="text-3xl">🍫</span>
+            <section>
+              <div className="flex items-center gap-3 mb-6 border-b pb-3 border-choco-200">
+                <span className="text-2xl">🍫</span>
                 <div>
                   <h2 style={{ color: theme.primary }} className="font-display text-2xl font-bold">
-                    Everyday Favorites
+                    Classic Chocolates
                   </h2>
-                  <p className="text-choco-600 text-xs">Our signature chocolates loved by all</p>
+                  <p className="text-choco-600 text-xs">Popular homemade favorites</p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {normalProducts.map((p) => (
-                  <ProductCard key={p._id} product={p} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {normalProducts.map((product) => (
+                  <ProductCard key={product._id} product={product} />
                 ))}
               </div>
             </section>
           )}
+
+          {/* Fallback if campaign has zero products attached */}
+          {specialProducts.length === 0 &&
+            hamperProducts.length === 0 &&
+            wrapperProducts.length === 0 &&
+            normalProducts.length === 0 && (
+              <div className="text-center py-16 bg-white/80 rounded-3xl p-8 border border-choco-100 max-w-md mx-auto">
+                <span className="text-5xl block mb-3">🎁</span>
+                <h3 className="font-display font-bold text-xl text-choco-900 mb-2">
+                  Occasion Collection Coming Soon
+                </h3>
+                <p className="text-choco-600 text-sm mb-6">
+                  Products for this special day are currently being prepared with love. Check back soon!
+                </p>
+                <Link to="/products" className="btn-gold py-2.5 px-6 text-sm font-bold">
+                  Browse Full Catalog
+                </Link>
+              </div>
+            )}
         </div>
       </div>
     );
   }
 
-  // ─── 3. All Published Occasions Showcase Grid View ──────────────────────────
+  // ─── 3. Showcase Grid View (When url is /special-occasions) ────────────────
   return (
-    <div className="bg-cream/50 min-h-screen py-12">
-      <div className="page-container max-w-6xl mx-auto space-y-10">
-        <div className="text-center max-w-2xl mx-auto space-y-3">
-          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold-500/20 text-choco-900 text-xs font-bold uppercase tracking-widest border border-gold-300">
+    <div className="min-h-screen bg-cream/40 py-12">
+      <div className="page-container max-w-6xl mx-auto">
+        <div className="text-center mb-12">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-gold-500/20 border border-gold-500/30 rounded-full text-gold-800 text-xs font-bold uppercase tracking-widest mb-4">
             🎉 Special Occasions Showcase
           </span>
-          <h1 className="font-display text-4xl font-bold text-choco-900">
+          <h1 className="font-display text-4xl sm:text-5xl font-extrabold text-choco-900 mb-4">
             Celebrate Every Special Day
           </h1>
-          <p className="text-choco-600 text-sm leading-relaxed">
+          <p className="text-choco-600 text-base max-w-2xl mx-auto">
             Explore curated festival collections, gourmet hampers, and custom chocolates handcrafted with love.
           </p>
         </div>
@@ -272,27 +293,43 @@ const SpecialOccasionsPage = () => {
                   whileHover={{ y: -6 }}
                   className="bg-white rounded-3xl overflow-hidden border border-choco-200 shadow-choco hover:shadow-2xl transition-all duration-300 flex flex-col justify-between"
                 >
-                  <div
-                    style={{ backgroundColor: theme.background }}
-                    className="p-6 relative border-b border-choco-100"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-4xl drop-shadow-sm">{camp.emoji || '🎉'}</span>
-                      <div>
-                        <h3 style={{ color: theme.primary }} className="font-display text-xl font-bold">
-                          {camp.occasionName}
-                        </h3>
-                        <p className="text-choco-600 text-xs line-clamp-1 mt-0.5">
-                          {camp.description || 'Special occasion collection'}
-                        </p>
+                  {camp.bannerImageUrl ? (
+                    <div className="h-48 relative w-full overflow-hidden">
+                      <img
+                        src={getImageUrl(camp.bannerImageUrl)}
+                        alt={camp.occasionName}
+                        onError={(e) => { e.currentTarget.parentElement.style.display = 'none'; }}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      style={{ backgroundColor: theme.background }}
+                      className="p-6 relative border-b border-choco-100"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-4xl drop-shadow-sm">{camp.emoji || '🎉'}</span>
+                        <div>
+                          <h3 style={{ color: theme.primary }} className="font-display text-xl font-bold">
+                            {camp.occasionName}
+                          </h3>
+                          <p className="text-choco-600 text-xs line-clamp-1 mt-0.5">
+                            {camp.description || 'Special occasion collection'}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="p-6 flex items-center justify-between mt-auto">
-                    <span className="text-xs text-choco-500 font-medium">
-                      ✨ Gourmet Chocolates & Hampers
-                    </span>
+                  <div className="p-6 flex items-center justify-between mt-auto bg-white border-t border-choco-100">
+                    <div>
+                      <h4 className="font-display font-bold text-choco-900 text-sm">
+                        {camp.occasionName}
+                      </h4>
+                      <span className="text-[11px] text-choco-500 font-medium">
+                        ✨ Exclusive Collection
+                      </span>
+                    </div>
                     <Link
                       to={`/occasions/${camp.slug}`}
                       className="btn-gold py-2 px-4 text-xs font-bold rounded-xl shadow-xs"

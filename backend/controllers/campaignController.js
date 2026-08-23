@@ -248,17 +248,13 @@ const getAllCampaigns = async (req, res) => {
   res.json({ success: true, campaigns });
 };
 
-// ─── Public: Get Active Published Campaigns ───────────────────────────────────
+// ─── Public: Get ALL Published Campaigns (status: 'published' ONLY) ─────────────
 // @route GET /api/campaigns
 const getPublishedCampaigns = async (req, res) => {
   try {
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-
-    const campaigns = await Campaign.find({
-      status: 'published',
-      $or: [{ endDate: null }, { endDate: { $gte: startOfToday } }],
-    })
+    // STATUS = 'published' IS THE ONLY GATE FOR VISIBILITY
+    // No date filtering applied to published campaigns!
+    const campaigns = await Campaign.find({ status: 'published' })
       .populate([
         { path: 'products.special', select: 'name price images category isAvailable' },
         { path: 'products.hampers', select: 'name price images category' },
@@ -275,7 +271,40 @@ const getPublishedCampaigns = async (req, res) => {
   }
 };
 
-// ─── Public: Get Campaign by Slug (Strict 404 for Draft/Expired) ─────────────
+// ─── Public: Get Upcoming Campaigns (Optional Frontend Teaser Filter) ─────────
+// @route GET /api/campaigns/upcoming
+const getUpcomingCampaigns = async (req, res) => {
+  try {
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const campaigns = await Campaign.find({
+      status: 'published',
+      startDate: { $gt: endOfToday },
+    })
+      .select('occasionName slug emoji themeColors bannerImageUrl description startDate endDate status')
+      .sort({ startDate: 1 });
+
+    res.json({ success: true, campaigns });
+  } catch (err) {
+    console.error('Error fetching upcoming campaigns:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch upcoming campaigns' });
+  }
+};
+
+// ─── Public: Fast Check if any Published Campaigns Exist ──────────────────────
+// @route GET /api/campaigns/has-active
+const getHasActiveCampaigns = async (req, res) => {
+  try {
+    const count = await Campaign.countDocuments({ status: 'published' });
+    res.json({ success: true, hasActive: count > 0 });
+  } catch (err) {
+    console.error('Error checking has-active campaigns:', err);
+    res.status(500).json({ success: false, hasActive: false });
+  }
+};
+
+// ─── Public: Get Campaign by Slug (Strict Gate: status === 'published') ───────
 // @route GET /api/campaigns/:slug
 const getCampaignBySlug = async (req, res) => {
   try {
@@ -293,16 +322,9 @@ const getCampaignBySlug = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Campaign not found' });
     }
 
-    // STRICT CHECK: Only published and non-expired allowed for public
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-
+    // STRICT CHECK: status === 'published' is the ONLY requirement
     if (campaign.status !== 'published') {
       return res.status(404).json({ success: false, message: 'Campaign is not published' });
-    }
-
-    if (campaign.endDate && campaign.endDate < startOfToday) {
-      return res.status(404).json({ success: false, message: 'Campaign has expired' });
     }
 
     res.json({ success: true, campaign });
@@ -319,5 +341,7 @@ module.exports = {
   deleteCampaign,
   getAllCampaigns,
   getPublishedCampaigns,
+  getUpcomingCampaigns,
+  getHasActiveCampaigns,
   getCampaignBySlug,
 };

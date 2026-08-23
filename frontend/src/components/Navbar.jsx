@@ -1,15 +1,24 @@
-import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { checkHasActiveCampaigns } from '../api/campaigns';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const { cartCount } = useCart();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [hasOccasions, setHasOccasions] = useState(false);
+
+  useEffect(() => {
+    checkHasActiveCampaigns()
+      .then((res) => setHasOccasions(!!res.data?.hasActive))
+      .catch(() => setHasOccasions(false));
+  }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -20,7 +29,7 @@ const Navbar = () => {
   const navLinks = [
     { to: '/', label: 'Home' },
     { to: '/products', label: 'Shop' },
-    { to: '/special-occasions', label: '🎉 Special Occasion' },
+    ...(hasOccasions ? [{ to: '/special-occasions', label: '🎉 Special Occasion' }] : []),
     { to: '/customize', label: '✨ Customize' },
     { to: '/about', label: 'About' },
     { to: '/contact', label: 'Contact' },
@@ -79,72 +88,75 @@ const Navbar = () => {
               )}
             </Link>
 
-            {/* User Menu */}
+            {/* Auth State */}
             {user ? (
               <div className="relative">
                 <button
-                  id="nav-user-menu-btn"
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-choco-800 text-cream text-sm font-medium hover:bg-choco-900 transition-all duration-200"
+                  id="user-menu-btn"
+                  className="flex items-center gap-2 py-1.5 px-3 rounded-xl bg-choco-100/70 hover:bg-choco-100 text-choco-800 transition-all duration-200 text-sm font-medium border border-choco-200/60"
                 >
-                  <span className="w-5 h-5 rounded-full bg-gold-500 flex items-center justify-center text-choco-900 text-[10px] font-bold">
-                    {user.name?.charAt(0).toUpperCase()}
+                  <span className="w-7 h-7 rounded-full bg-choco-800 text-cream flex items-center justify-center text-xs font-bold shadow-xs">
+                    {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
                   </span>
-                  <span className="hidden sm:block max-w-[80px] truncate">{user.name?.split(' ')[0]}</span>
-                  <svg className={`w-3 h-3 transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span className="hidden sm:inline max-w-[100px] truncate">{user.name?.split(' ')[0]}</span>
+                  <svg className="w-4 h-4 text-choco-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
 
+                {/* Dropdown */}
                 <AnimatePresence>
                   {userMenuOpen && (
                     <motion.div
-                      initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-choco-lg border border-choco-100 overflow-hidden"
+                      className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-choco-lg border border-choco-100 py-2 z-50"
                     >
-                      <div className="px-4 py-3 border-b border-choco-100">
-                        <p className="text-sm font-semibold text-choco-900">{user.name}</p>
-                        <p className="text-xs text-choco-500 truncate">{user.email}</p>
+                      <div className="px-4 py-2 border-b border-choco-100">
+                        <p className="font-bold text-choco-900 text-sm truncate">{user.name}</p>
+                        <p className="text-choco-500 text-xs truncate">{user.email}</p>
+                        {user.role === 'admin' && (
+                          <span className="inline-block mt-1 text-[10px] uppercase tracking-wider font-extrabold bg-gold-100 text-gold-800 px-2 py-0.5 rounded-md">
+                            👑 Admin
+                          </span>
+                        )}
                       </div>
+
                       {user.role === 'admin' && (
                         <Link
                           to="/admin"
                           onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center gap-2 px-4 py-2.5 text-sm text-choco-700 hover:bg-choco-50 transition-colors"
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-choco-800 hover:bg-choco-50 font-semibold"
                         >
-                          <span>🛠️</span> Admin Dashboard
+                          ⚙️ Admin Dashboard
                         </Link>
                       )}
+
                       <Link
                         to="/orders"
                         onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-choco-700 hover:bg-choco-50 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-choco-700 hover:bg-choco-50"
                       >
-                        <span>📦</span> My Orders
+                        📦 My Orders
                       </Link>
+
                       <Link
                         to="/my-custom-orders"
                         onClick={() => setUserMenuOpen(false)}
-                        id="nav-custom-orders-link"
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-choco-700 hover:bg-choco-50 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-choco-700 hover:bg-choco-50"
                       >
-                        <span>✏️</span> Custom Requests
+                        ✨ Custom Requests
                       </Link>
-                      <Link
-                        to="/profile"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-choco-700 hover:bg-choco-50 transition-colors"
-                      >
-                        <span>👤</span> Profile
-                      </Link>
+
                       <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-choco-100"
+                        id="logout-btn"
+                        className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium"
                       >
-                        <span>🚪</span> Logout
+                        🚪 Sign Out
                       </button>
                     </motion.div>
                   )}
@@ -152,26 +164,35 @@ const Navbar = () => {
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Link to="/login" id="nav-login-btn" className="btn-secondary py-2 px-4 text-xs">
+                <Link
+                  to="/login"
+                  id="nav-login-btn"
+                  className="px-4 py-2 text-sm font-semibold text-choco-800 hover:bg-choco-50 rounded-xl transition-all duration-200"
+                >
                   Login
                 </Link>
-                <Link to="/register" id="nav-register-btn" className="btn-primary py-2 px-4 text-xs">
+                <Link
+                  to="/register"
+                  id="nav-register-btn"
+                  className="btn-primary py-2 px-4 text-sm font-semibold shadow-xs"
+                >
                   Sign Up
                 </Link>
               </div>
             )}
 
-            {/* Mobile menu button */}
+            {/* Mobile Hamburger Toggle */}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="md:hidden p-2 rounded-lg text-choco-700 hover:bg-choco-100"
-              aria-label="Toggle menu"
+              className="md:hidden p-2 text-choco-800 hover:bg-choco-50 rounded-xl"
+              aria-label="Toggle Navigation Menu"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {mobileOpen
-                  ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                }
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {mobileOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
               </svg>
             </button>
           </div>
