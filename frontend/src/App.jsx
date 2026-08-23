@@ -12,6 +12,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
+import InstallAppBanner from './components/InstallAppBanner';
 
 // Customer pages
 import Home from './pages/Home';
@@ -54,6 +55,7 @@ import useAppBackButton from './hooks/useAppBackButton';
 // Customer layout wrapper
 const CustomerLayout = ({ children }) => (
   <div className="flex flex-col min-h-screen">
+    <InstallAppBanner />
     <Navbar />
     <BackButton />
     <main className="flex-1 pb-16 md:pb-0">{children}</main>
