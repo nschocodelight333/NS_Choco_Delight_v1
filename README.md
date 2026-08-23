@@ -25,7 +25,7 @@
 8. [Getting Started / Local Setup](#8-getting-started--local-setup)
 9. [Testing](#9-testing)
 10. [Deployment](#10-deployment)
-11. [Mobile App (PWA & Android)](#11-mobile-app-pwa--android)
+11. [Mobile & App Access (PWA & Android APK)](#11-mobile--app-access-pwa--android-apk)
 12. [Security Notes](#12-security-notes)
 13. [Contributing](#13-contributing)
 14. [License & Ownership](#14-license--ownership)
@@ -43,7 +43,7 @@ The platform resolves local commerce bottlenecks by automating custom shape and 
 - **💬 WhatsApp & Direct Ordering Integration**: Instant single-click WhatsApp order generation and direct customer contact shortcuts.
 - **📊 Real-time Executive Admin Dashboard**: Live sales telemetry, order fulfillment tracking, revenue stats, and customer directory analytics.
 - **🎉 Dynamic Special Occasions System**: Automated holiday teaser banners, launch countdowns, and published campaign product showcase pages.
-- **📱 PWA & Cross-Platform Mobile**: Installable Progressive Web App (PWA) plus native Android APK support via Capacitor.
+- **📱 PWA & Cross-Platform Mobile**: Installable Progressive Web App (PWA) plus native Android APK support via Capacitor with **100% Feature Parity**.
 
 ---
 
@@ -154,7 +154,7 @@ NS_Chaco_Delight/
 │   ├── public/                   # Static assets, SVG icons, PWA manifest.json, sw.js
 │   ├── src/
 │   │   ├── api/                  # Axios HTTP client endpoints mapped by resource
-│   │   ├── components/           # Reusable UI components (Navbar, Footer, ProductCard, ErrorBoundary)
+│   │   ├── components/           # Reusable UI components (Navbar, Footer, ProductCard, ErrorBoundary, InstallAppBanner)
 │   │   ├── context/              # React Context Providers (AuthContext, CartContext)
 │   │   ├── hooks/                # Custom hooks (useAppBackButton for Capacitor Android)
 │   │   ├── pages/                # Customer and Admin view pages
@@ -319,26 +319,29 @@ GitHub Actions workflow (`.github/workflows/ci-cd.yml`) automatically executes o
 
 ---
 
-## 11. Mobile App (PWA & Android)
+## 11. Mobile & App Access (PWA & Android APK)
 
-### 📲 Progressive Web App (PWA)
-The app includes a web app manifest (`/public/manifest.json`) and self-managing service worker (`/public/sw.js`). Users on Chrome or Safari can tap **"Add to Home Screen"** to install the mobile PWA.
+> **✨ 100% Feature Parity Guarantee**: Every single feature available on the web version—including Admin Dashboard telemetry, product management, Razorpay payment modal, custom chocolate designer with photo upload, and campaign publication—is **100% functional on mobile browsers, installed PWA, and the native Android APK.**
 
-### 🤖 Android Native APK (Capacitor)
-To build and run the native Android app using Capacitor:
+### 📲 1. Progressive Web App (PWA Installation)
+- **Zero App Store Download**: Visitors on Android Chrome or iOS Safari can tap **"📱 Install App"** directly from the top banner or select **"Add to Home Screen"** in their browser menu.
+- **Standalone Execution**: Runs in a standalone window with no browser URL address bar, matching a native mobile application experience.
+
+### 🤖 2. Native Android App Build (Capacitor)
+To build and sync the native Android APK locally:
 
 ```bash
 cd frontend
-# 1. Build production web bundle
+# 1. Build production React web bundle
 npm run build
 
-# 2. Sync web build to native android container
+# 2. Sync build assets and plugins to Android container
 npx cap sync android
 
-# 3. Open project in Android Studio
+# 3. Launch Android Studio to build APK or run on emulator
 npx cap open android
 ```
-*(In Android Studio, connect your physical Android device or launch an emulator and click **Run ▶**).*
+*(Inside Android Studio, select **Build → Build APK(s)** or click **Run ▶** to deploy to a connected Android physical device or virtual emulator).*
 
 ---
 
