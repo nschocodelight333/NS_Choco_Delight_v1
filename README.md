@@ -333,6 +333,3 @@ When ready for live, swap test keys with live keys from Razorpay dashboard.
 ## 📄 License
 
 Private — All rights reserved. Choco Delight.
-
-# NS_Choco_Delight
->>>>>>> a3cc4ca5b61d0c3f76db3f87262cf3cc11d29a8c

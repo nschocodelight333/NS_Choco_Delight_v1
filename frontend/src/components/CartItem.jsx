@@ -1,4 +1,5 @@
 import { useCart } from '../context/CartContext';
+import { getImageUrl } from '../utils/imageUrl';
 
 const CHOCO_PLACEHOLDER = 'https://images.unsplash.com/photo-1481391319762-47dff72954d9?w=200&q=60';
 
@@ -8,8 +9,10 @@ const CartItem = ({ item }) => {
   const product = item.product;
   if (!product) return null;
 
-  const imageUrl = product.images?.[0] || CHOCO_PLACEHOLDER;
+  const imageUrl = getImageUrl(product.images?.[0]) || CHOCO_PLACEHOLDER;
   const subtotal = product.price * item.quantity;
+
+  const targetId = item._id || item.product?._id || item.product;
 
   return (
     <div className="flex gap-4 p-4 bg-white rounded-2xl shadow-sm border border-choco-100">
@@ -37,8 +40,8 @@ const CartItem = ({ item }) => {
             )}
           </div>
           <button
-            onClick={() => removeItem(item._id)}
-            id={`cart-remove-${item._id}`}
+            onClick={() => removeItem(targetId)}
+            id={`cart-remove-${targetId}`}
             className="text-choco-400 hover:text-red-500 transition-colors flex-shrink-0"
             aria-label="Remove item"
           >
@@ -52,8 +55,8 @@ const CartItem = ({ item }) => {
           {/* Qty Controls */}
           <div className="flex items-center gap-1 bg-choco-50 rounded-xl p-1">
             <button
-              onClick={() => updateItem(item._id, item.quantity - 1)}
-              id={`cart-decrease-${item._id}`}
+              onClick={() => updateItem(targetId, item.quantity - 1)}
+              id={`cart-decrease-${targetId}`}
               disabled={item.quantity <= 1}
               className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-choco-800 font-bold disabled:opacity-40 hover:bg-choco-100 transition-colors shadow-sm text-sm"
               aria-label="Decrease quantity"
@@ -62,8 +65,8 @@ const CartItem = ({ item }) => {
             </button>
             <span className="w-8 text-center text-sm font-semibold text-choco-900">{item.quantity}</span>
             <button
-              onClick={() => updateItem(item._id, item.quantity + 1)}
-              id={`cart-increase-${item._id}`}
+              onClick={() => updateItem(targetId, item.quantity + 1)}
+              id={`cart-increase-${targetId}`}
               disabled={item.quantity >= product.stock}
               className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-choco-800 font-bold disabled:opacity-40 hover:bg-choco-100 transition-colors shadow-sm text-sm"
               aria-label="Increase quantity"

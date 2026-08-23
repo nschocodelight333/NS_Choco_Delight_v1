@@ -1,38 +1,125 @@
 const Campaign = require('../models/Campaign');
 const cloudinary = require('../config/cloudinary');
 
+const slugify = (text) => {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/[\s\W-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+};
+
+// ─── Helpers: File URL Formatter ──────────────────────────────────────────────
+const getFileUrl = (file) => {
+  if (!file) return '';
+  if (file.path && (file.path.startsWith('http://') || file.path.startsWith('https://'))) {
+    return file.path;
+  }
+  return `/uploads/${file.filename}`;
+};
+
+// ─── Helpers: Parse Dates ───────────────────────────────────────────────────
+const parseStartDate = (dateStr) => {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return null;
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const parseEndDate = (dateStr) => {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return null;
+  // Set to end of day: 23:59:59.999
+  d.setHours(23, 59, 59, 999);
+  return d;
+};
+
+// ─── Helper: Parse Products Object ───────────────────────────────────────────
+const parseProductsCategoryObject = (productsInput) => {
+  if (!productsInput) {
+    return { special: [], hampers: [], customWrappers: [], normal: [] };
+  }
+  let parsed = typeof productsInput === 'string' ? JSON.parse(productsInput) : productsInput;
+  if (Array.isArray(parsed)) {
+    return { special: parsed, hampers: [], customWrappers: [], normal: [] };
+  }
+  return {
+    special: Array.isArray(parsed.special) ? parsed.special : [],
+    hampers: Array.isArray(parsed.hampers) ? parsed.hampers : [],
+    customWrappers: Array.isArray(parsed.customWrappers) ? parsed.customWrappers : [],
+    normal: Array.isArray(parsed.normal) ? parsed.normal : [],
+  };
+};
+
+// ─── Helper: Parse Theme Colors ──────────────────────────────────────────────
+const parseThemeColors = (colorsInput) => {
+  if (!colorsInput) {
+    return { primary: '#7C2D12', secondary: '#D97706', background: '#FFFBEB' };
+  }
+  let parsed = typeof colorsInput === 'string' ? JSON.parse(colorsInput) : colorsInput;
+  return {
+    primary: parsed.primary || '#7C2D12',
+    secondary: parsed.secondary || '#D97706',
+    background: parsed.background || '#FFFBEB',
+  };
+};
+
 // ─── Admin: Create Campaign ───────────────────────────────────────────────────
 // @route POST /api/admin/campaigns
 const createCampaign = async (req, res) => {
-  const { title, occasion, description, startDate, endDate, isActive, products, hampers } = req.body;
+  const {
+    occasionName,
+    slug: inputSlug,
+    emoji,
+    themeColors,
+    description,
+    startDate,
+    endDate,
+    status,
+    products,
+  } = req.body;
 
-  // Handle uploaded banner image
-  const bannerImageUrl = req.file ? req.file.path : (req.body.bannerImageUrl || '');
-
-  // Parse JSON fields if sent as strings (multipart)
-  let parsedProducts = [];
-  if (products) {
-    parsedProducts = typeof products === 'string' ? JSON.parse(products) : products;
+  if (!occasionName || !occasionName.trim()) {
+    return res.status(400).json({ success: false, message: 'Occasion name is required' });
   }
 
-  let parsedHampers = [];
-  if (hampers) {
-    parsedHampers = typeof hampers === 'string' ? JSON.parse(hampers) : hampers;
+  // Generate unique slug
+  let slug = inputSlug ? slugify(inputSlug) : slugify(occasionName);
+  let existingSlug = await Campaign.findOne({ slug });
+  if (existingSlug) {
+    slug = `${slug}-${Date.now().toString().slice(-4)}`;
   }
+
+  // Banner image handling
+  const bannerImageUrl = req.file ? getFileUrl(req.file) : (req.body.bannerImageUrl || '');
+
+  const parsedProducts = parseProductsCategoryObject(products);
+  const parsedTheme = parseThemeColors(themeColors);
 
   const campaign = await Campaign.create({
-    title,
-    occasion: occasion || 'Custom',
-    description: description || '',
+    occasionName: occasionName.trim(),
+    slug,
+    emoji: emoji || '🎉',
+    themeColors: parsedTheme,
     bannerImageUrl,
-    startDate: new Date(startDate),
-    endDate: new Date(endDate),
-    isActive: isActive === 'false' || isActive === false ? false : true,
+    description: description || '',
+    startDate: parseStartDate(startDate),
+    endDate: parseEndDate(endDate),
+    status: status && ['draft', 'published', 'archived'].includes(status) ? status : 'draft',
     products: parsedProducts,
-    hampers: parsedHampers,
   });
 
-  await campaign.populate('products', 'name price images');
+  await campaign.populate([
+    { path: 'products.special', select: 'name price images category isAvailable' },
+    { path: 'products.hampers', select: 'name price images category isAvailable' },
+    { path: 'products.customWrappers', select: 'name price images category isAvailable' },
+    { path: 'products.normal', select: 'name price images category isAvailable' },
+    { path: 'products', select: 'name price images category isAvailable' },
+  ]);
+
   res.status(201).json({ success: true, campaign });
 };
 
@@ -41,134 +128,196 @@ const createCampaign = async (req, res) => {
 const updateCampaign = async (req, res) => {
   const campaign = await Campaign.findById(req.params.id);
   if (!campaign) {
-    const err = new Error('Campaign not found');
-    err.statusCode = 404;
-    throw err;
+    return res.status(404).json({ success: false, message: 'Campaign not found' });
   }
 
-  const { title, occasion, description, startDate, endDate, isActive, products, hampers, removeBanner } = req.body;
+  const {
+    occasionName,
+    slug: inputSlug,
+    emoji,
+    themeColors,
+    description,
+    startDate,
+    endDate,
+    status,
+    products,
+    removeBanner,
+  } = req.body;
 
-  if (title) campaign.title = title;
-  if (occasion) campaign.occasion = occasion;
+  if (occasionName && occasionName.trim()) {
+    campaign.occasionName = occasionName.trim();
+    if (!inputSlug) {
+      campaign.slug = slugify(occasionName.trim());
+    }
+  }
+
+  if (inputSlug && inputSlug.trim()) {
+    campaign.slug = slugify(inputSlug.trim());
+  }
+
+  if (emoji) campaign.emoji = emoji;
+  if (themeColors) campaign.themeColors = parseThemeColors(themeColors);
   if (description !== undefined) campaign.description = description;
-  if (startDate) campaign.startDate = new Date(startDate);
-  if (endDate) campaign.endDate = new Date(endDate);
-  if (isActive !== undefined) campaign.isActive = isActive === 'false' || isActive === false ? false : true;
+  if (startDate !== undefined) campaign.startDate = parseStartDate(startDate);
+  if (endDate !== undefined) campaign.endDate = parseEndDate(endDate);
+  if (status && ['draft', 'published', 'archived'].includes(status)) campaign.status = status;
 
   if (products !== undefined) {
-    campaign.products = typeof products === 'string' ? JSON.parse(products) : products;
-  }
-
-  if (hampers !== undefined) {
-    campaign.hampers = typeof hampers === 'string' ? JSON.parse(hampers) : hampers;
+    campaign.products = parseProductsCategoryObject(products);
   }
 
   // Handle new banner image upload
   if (req.file) {
-    // Delete old banner from Cloudinary if it exists
-    if (campaign.bannerImageUrl) {
+    if (campaign.bannerImageUrl && campaign.bannerImageUrl.includes('cloudinary')) {
       try {
         const publicId = campaign.bannerImageUrl.split('/').slice(-2).join('/').split('.')[0];
         await cloudinary.uploader.destroy(publicId);
       } catch (e) { /* ignore */ }
     }
-    campaign.bannerImageUrl = req.file.path;
+    campaign.bannerImageUrl = getFileUrl(req.file);
   }
 
-  // Remove banner if requested
   if (removeBanner === 'true' && campaign.bannerImageUrl) {
-    try {
-      const publicId = campaign.bannerImageUrl.split('/').slice(-2).join('/').split('.')[0];
-      await cloudinary.uploader.destroy(publicId);
-    } catch (e) { /* ignore */ }
+    if (campaign.bannerImageUrl.includes('cloudinary')) {
+      try {
+        const publicId = campaign.bannerImageUrl.split('/').slice(-2).join('/').split('.')[0];
+        await cloudinary.uploader.destroy(publicId);
+      } catch (e) { /* ignore */ }
+    }
     campaign.bannerImageUrl = '';
   }
 
   await campaign.save();
-  await campaign.populate('products', 'name price images');
+  await campaign.populate([
+    { path: 'products.special', select: 'name price images category isAvailable' },
+    { path: 'products.hampers', select: 'name price images category isAvailable' },
+    { path: 'products.customWrappers', select: 'name price images category isAvailable' },
+    { path: 'products.normal', select: 'name price images category isAvailable' },
+    { path: 'products', select: 'name price images category isAvailable' },
+  ]);
+
   res.json({ success: true, campaign });
 };
 
-// ─── Admin: Delete Campaign ───────────────────────────────────────────────────
+// ─── Admin: Quick Toggle Publish Status ───────────────────────────────────────
+// @route PATCH /api/admin/campaigns/:id/publish
+const togglePublishStatus = async (req, res) => {
+  const campaign = await Campaign.findById(req.params.id);
+  if (!campaign) {
+    return res.status(404).json({ success: false, message: 'Campaign not found' });
+  }
+
+  campaign.status = campaign.status === 'published' ? 'draft' : 'published';
+  await campaign.save();
+
+  res.json({ success: true, status: campaign.status, campaign });
+};
+
+// ─── Admin: Delete / Archive Campaign ────────────────────────────────────────
 // @route DELETE /api/admin/campaigns/:id
 const deleteCampaign = async (req, res) => {
   const campaign = await Campaign.findById(req.params.id);
   if (!campaign) {
-    const err = new Error('Campaign not found');
-    err.statusCode = 404;
-    throw err;
+    return res.status(404).json({ success: false, message: 'Campaign not found' });
   }
 
-  // Delete banner from Cloudinary
-  if (campaign.bannerImageUrl) {
+  if (campaign.bannerImageUrl && campaign.bannerImageUrl.includes('cloudinary')) {
     try {
       const publicId = campaign.bannerImageUrl.split('/').slice(-2).join('/').split('.')[0];
       await cloudinary.uploader.destroy(publicId);
     } catch (e) { /* ignore */ }
-  }
-
-  // Delete hamper images
-  for (const hamper of campaign.hampers) {
-    if (hamper.imageUrl) {
-      try {
-        const publicId = hamper.imageUrl.split('/').slice(-2).join('/').split('.')[0];
-        await cloudinary.uploader.destroy(publicId);
-      } catch (e) { /* ignore */ }
-    }
   }
 
   await campaign.deleteOne();
   res.json({ success: true, message: 'Campaign deleted.' });
 };
 
-// ─── Admin: List All Campaigns ────────────────────────────────────────────────
+// ─── Admin: List All Campaigns (Any Status) ──────────────────────────────────
 // @route GET /api/admin/campaigns
 const getAllCampaigns = async (req, res) => {
   const campaigns = await Campaign.find()
-    .populate('products', 'name price images category')
-    .populate('hampers.includedItems', 'name price')
+    .populate([
+      { path: 'products.special', select: 'name price images category' },
+      { path: 'products.hampers', select: 'name price images category' },
+      { path: 'products.customWrappers', select: 'name price images category' },
+      { path: 'products.normal', select: 'name price images category' },
+      { path: 'products', select: 'name price images category' },
+    ])
     .sort({ createdAt: -1 });
 
   res.json({ success: true, campaigns });
 };
 
-// ─── Public: Get Active Campaigns ─────────────────────────────────────────────
-// @route GET /api/campaigns/active
-const getActiveCampaigns = async (req, res) => {
-  const now = new Date();
-  const campaigns = await Campaign.find({
-    isActive: true,
-    startDate: { $lte: now },
-    endDate: { $gte: now },
-  })
-    .populate('products', 'name price images category isAvailable')
-    .populate('hampers.includedItems', 'name price images')
-    .sort({ createdAt: -1 });
+// ─── Public: Get Active Published Campaigns ───────────────────────────────────
+// @route GET /api/campaigns
+const getPublishedCampaigns = async (req, res) => {
+  try {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
 
-  res.json({ success: true, campaigns });
-};
+    const campaigns = await Campaign.find({
+      status: 'published',
+      $or: [{ endDate: null }, { endDate: { $gte: startOfToday } }],
+    })
+      .populate([
+        { path: 'products.special', select: 'name price images category isAvailable' },
+        { path: 'products.hampers', select: 'name price images category' },
+        { path: 'products.customWrappers', select: 'name price images category' },
+        { path: 'products.normal', select: 'name price images category' },
+        { path: 'products', select: 'name price images category isAvailable' },
+      ])
+      .sort({ createdAt: -1 });
 
-// ─── Public: Get Single Campaign ──────────────────────────────────────────────
-// @route GET /api/campaigns/:id
-const getCampaign = async (req, res) => {
-  const campaign = await Campaign.findById(req.params.id)
-    .populate('products', 'name price images category isAvailable description ratingAverage')
-    .populate('hampers.includedItems', 'name price images');
-
-  if (!campaign) {
-    const err = new Error('Campaign not found');
-    err.statusCode = 404;
-    throw err;
+    res.json({ success: true, campaigns });
+  } catch (err) {
+    console.error('Error fetching published campaigns:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch campaigns' });
   }
+};
 
-  res.json({ success: true, campaign });
+// ─── Public: Get Campaign by Slug (Strict 404 for Draft/Expired) ─────────────
+// @route GET /api/campaigns/:slug
+const getCampaignBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const campaign = await Campaign.findOne({ slug })
+      .populate([
+        { path: 'products.special', select: 'name price images category description ratingAverage isAvailable' },
+        { path: 'products.hampers', select: 'name price images category description ratingAverage isAvailable' },
+        { path: 'products.customWrappers', select: 'name price images category description ratingAverage isAvailable' },
+        { path: 'products.normal', select: 'name price images category description ratingAverage isAvailable' },
+        { path: 'products', select: 'name price images category description ratingAverage isAvailable' },
+      ]);
+
+    if (!campaign) {
+      return res.status(404).json({ success: false, message: 'Campaign not found' });
+    }
+
+    // STRICT CHECK: Only published and non-expired allowed for public
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    if (campaign.status !== 'published') {
+      return res.status(404).json({ success: false, message: 'Campaign is not published' });
+    }
+
+    if (campaign.endDate && campaign.endDate < startOfToday) {
+      return res.status(404).json({ success: false, message: 'Campaign has expired' });
+    }
+
+    res.json({ success: true, campaign });
+  } catch (err) {
+    console.error('Error fetching campaign by slug:', err);
+    res.status(500).json({ success: false, message: 'Failed to load campaign' });
+  }
 };
 
 module.exports = {
   createCampaign,
   updateCampaign,
+  togglePublishStatus,
   deleteCampaign,
   getAllCampaigns,
-  getActiveCampaigns,
-  getCampaign,
+  getPublishedCampaigns,
+  getCampaignBySlug,
 };

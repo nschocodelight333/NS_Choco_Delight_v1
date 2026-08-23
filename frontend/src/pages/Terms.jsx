@@ -15,7 +15,7 @@ const Terms = () => (
         },
         {
           title: '3. Pricing & Payments',
-          content: 'All prices listed on our website are in INR (₹). We accept online payments via Razorpay (UPI, Credit/Debit cards, Net Banking) and Cash on Delivery for eligible pincodes.',
+          content: 'All prices listed on our website are in INR (₹). We accept online payments via PhonePe, Paytm, Google Pay (8185920511), Razorpay (UPI, Credit/Debit cards, Net Banking) and Cash on Delivery for eligible pincodes.',
         },
         {
           title: '4. Order Fulfillment & Delivery',

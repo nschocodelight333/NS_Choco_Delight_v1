@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { getImageUrl } from '../../utils/imageUrl';
 import {
   getAllCustomOrders,
   setQuote,
@@ -99,13 +100,16 @@ const DetailPanel = ({ request, onClose, onUpdated }) => {
           {/* Reference Images */}
           {request.referenceImageUrls?.length > 0 && (
             <div>
-              <p className="label">Reference Images</p>
+              <p className="label">Reference Images ({request.referenceImageUrls.length})</p>
               <div className="flex flex-wrap gap-2 mt-1">
-                {request.referenceImageUrls.map((url, i) => (
-                  <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                    <img src={url} alt={`Reference ${i + 1}`} className="w-20 h-20 rounded-xl object-cover border-2 border-choco-100 hover:border-choco-400 transition-colors" />
-                  </a>
-                ))}
+                {request.referenceImageUrls.map((rawUrl, i) => {
+                  const fullUrl = getImageUrl(rawUrl);
+                  return (
+                    <a key={i} href={fullUrl} target="_blank" rel="noopener noreferrer">
+                      <img src={fullUrl} alt={`Reference ${i + 1}`} className="w-20 h-20 rounded-xl object-cover border-2 border-choco-100 hover:border-choco-400 transition-colors shadow-sm" />
+                    </a>
+                  );
+                })}
               </div>
             </div>
           )}

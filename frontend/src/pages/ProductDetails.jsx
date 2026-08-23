@@ -5,6 +5,7 @@ import { getProduct, getProductReviews, createReview, checkCanReview } from '../
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import StarRating from '../components/StarRating';
+import { getImageUrl } from '../utils/imageUrl';
 import { ProductDetailSkeleton } from '../components/SkeletonLoader';
 import toast from 'react-hot-toast';
 
@@ -118,7 +119,7 @@ const ProductDetails = () => {
     );
   }
 
-  const images = product.images?.length > 0 ? product.images : [PLACEHOLDER];
+  const images = product.images?.length > 0 ? product.images.map((img) => getImageUrl(img)) : [PLACEHOLDER];
 
   // ── Review Panel Content ──────────────────────────────────────────────
   const renderReviewPanel = () => {
@@ -363,8 +364,17 @@ const ProductDetails = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
             {/* Write a review panel */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-choco-100">
-              <h3 className="font-semibold text-choco-900 mb-4">Write a Review</h3>
+            <div className={`rounded-2xl p-6 shadow-sm border transition-all ${
+              canReview ? 'bg-amber-50/30 border-amber-300 ring-2 ring-amber-400/20' : 'bg-white border-choco-100'
+            }`}>
+              <h3 className="font-semibold text-choco-900 mb-4 flex items-center justify-between">
+                <span>Write a Review</span>
+                {canReview && (
+                  <span className="text-[10px] bg-amber-200 text-amber-950 font-bold px-2.5 py-0.5 rounded-full border border-amber-300">
+                    ⭐ Eligible Buyer
+                  </span>
+                )}
+              </h3>
               {renderReviewPanel()}
             </div>
 

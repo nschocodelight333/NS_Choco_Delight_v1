@@ -18,12 +18,13 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const user = await login(form.email, form.password);
+      const user = await login(form.email.trim(), form.password);
       toast.success(`Welcome back, ${user.name.split(' ')[0]}! 🍫`);
       navigate(user.role === 'admin' ? '/admin' : from, { replace: true });
     } catch (err) {
       console.error('Login error:', err.response?.data || err.message);
-      toast.error(err.response?.data?.message || 'Login failed. Check your credentials.');
+      const msg = err.response?.data?.message || (err.message?.includes('Network Error') ? 'Server connection error. Please ensure backend is running.' : 'Login failed. Check your credentials.');
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

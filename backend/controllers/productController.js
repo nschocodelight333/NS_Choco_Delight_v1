@@ -5,55 +5,98 @@ const cloudinary = require('../config/cloudinary');
 // @route   GET /api/products
 // @access  Public
 const getProducts = async (req, res) => {
-  const {
-    category,
-    search,
-    minPrice,
-    maxPrice,
-    rating,
-    sort,
-    page = 1,
-    limit = 12,
-    featured,
-  } = req.query;
+  try {
+    const {
+      category,
+      search,
+      minPrice,
+      maxPrice,
+      rating,
+      sort,
+      page = 1,
+      limit = 12,
+      featured,
+    } = req.query;
 
-  const query = {};
+    const query = {};
 
-  // Filters
-  if (category) query.category = category;
-  if (featured === 'true') query.isFeatured = true;
-  if (search) query.$text = { $search: search };
+    // Filters
+    if (category) {
+      if (category.toLowerCase().includes('normal') || category.toLowerCase().includes('heart')) {
+        query.category = 'Normal Shape or Heart';
+      } else if (category.toLowerCase().includes('bite')) {
+        query.category = 'Bites';
+      } else {
+        query.category = { $regex: category, $options: 'i' };
+      }
+    }
 
-  if (minPrice || maxPrice) {
-    query.price = {};
-    if (minPrice) query.price.$gte = Number(minPrice);
-    if (maxPrice) query.price.$lte = Number(maxPrice);
+    if (featured === 'true') query.isFeatured = true;
+
+    if (search && search.trim()) {
+      query.$or = [
+        { name: { $regex: search.trim(), $options: 'i' } },
+        { description: { $regex: search.trim(), $options: 'i' } },
+      ];
+    }
+
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = Number(minPrice);
+      if (maxPrice) query.price.$lte = Number(maxPrice);
+    }
+
+    if (rating) query.ratingAverage = { $gte: Number(rating) };
+
+    // Sorting
+    let sortOption = { createdAt: -1 };
+    if (sort === 'price_asc') sortOption = { price: 1 };
+    else if (sort === 'price_desc') sortOption = { price: -1 };
+    else if (sort === 'rating') sortOption = { ratingAverage: -1, numReviews: -1, createdAt: -1 };
+    else if (sort === 'newest') sortOption = { createdAt: -1 };
+
+    let total = await Product.countDocuments(query);
+    let rawProducts = [];
+
+    if (total > 0) {
+      const pages = Math.ceil(total / Number(limit)) || 1;
+      let currentPage = Number(page);
+      if (currentPage > pages) currentPage = 1;
+      const skip = (currentPage - 1) * Number(limit);
+
+      rawProducts = await Product.find(query)
+        .sort(sortOption)
+        .skip(skip)
+        .limit(Number(limit));
+    } else {
+      // Fallback: If specific search/category returned 0, load default products so page is not empty
+      total = await Product.countDocuments({});
+      const skip = 0;
+      rawProducts = await Product.find({})
+        .sort(sortOption)
+        .limit(Number(limit));
+    }
+
+    const pages = Math.ceil(total / Number(limit)) || 1;
+    let currentPage = Number(page);
+
+    const products = rawProducts.map((p) => {
+      const pObj = p.toObject();
+      pObj.images = (pObj.images || []).map(cleanImagePath);
+      return pObj;
+    });
+
+    res.json({
+      success: true,
+      total,
+      page: currentPage,
+      pages,
+      products,
+    });
+  } catch (err) {
+    console.error('❌ getProducts Error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch products', products: [], total: 0 });
   }
-
-  if (rating) query.ratingAverage = { $gte: Number(rating) };
-
-  // Sorting
-  let sortOption = { createdAt: -1 };
-  if (sort === 'price_asc') sortOption = { price: 1 };
-  else if (sort === 'price_desc') sortOption = { price: -1 };
-  else if (sort === 'rating') sortOption = { ratingAverage: -1 };
-  else if (sort === 'newest') sortOption = { createdAt: -1 };
-
-  const skip = (Number(page) - 1) * Number(limit);
-  const total = await Product.countDocuments(query);
-
-  const products = await Product.find(query)
-    .sort(sortOption)
-    .skip(skip)
-    .limit(Number(limit));
-
-  res.json({
-    success: true,
-    total,
-    page: Number(page),
-    pages: Math.ceil(total / Number(limit)),
-    products,
-  });
 };
 
 // @desc    Get single product
@@ -66,7 +109,9 @@ const getProduct = async (req, res) => {
     err.statusCode = 404;
     throw err;
   }
-  res.json({ success: true, product });
+  const pObj = product.toObject();
+  pObj.images = (pObj.images || []).map(cleanImagePath);
+  res.json({ success: true, product: pObj });
 };
 
 // @desc    Create product
@@ -75,8 +120,15 @@ const getProduct = async (req, res) => {
 const createProduct = async (req, res) => {
   const { name, description, category, shapeOptions, price, stock, isFeatured } = req.body;
 
-  // Handle uploaded images (Cloudinary URLs from multer)
-  const images = req.files ? req.files.map((f) => f.path) : [];
+  // Handle uploaded images (Cloudinary URLs or local static URLs)
+  const images = req.files
+    ? req.files.map((f) => {
+        if (f.path && (f.path.startsWith('http://') || f.path.startsWith('https://'))) {
+          return f.path;
+        }
+        return `/uploads/${f.filename}`;
+      })
+    : [];
 
   // Parse shapeOptions if sent as JSON string
   let parsedShapeOptions = [];
@@ -98,6 +150,15 @@ const createProduct = async (req, res) => {
   res.status(201).json({ success: true, product });
 };
 
+const cleanImagePath = (img) => {
+  if (!img || typeof img !== 'string') return img;
+  if (img.startsWith('http://') || img.startsWith('https://') || img.startsWith('/uploads/')) {
+    return img;
+  }
+  const filename = img.split(/[\/\\]/).pop();
+  return `/uploads/${filename}`;
+};
+
 // @desc    Update product
 // @route   PUT /api/products/:id
 // @access  Admin
@@ -109,7 +170,7 @@ const updateProduct = async (req, res) => {
     throw err;
   }
 
-  const { name, description, category, shapeOptions, price, stock, isFeatured, removeImages } = req.body;
+  const { name, description, category, shapeOptions, price, stock, isFeatured, isAvailable, removeImages } = req.body;
 
   if (name) product.name = name;
   if (description) product.description = description;
@@ -117,20 +178,17 @@ const updateProduct = async (req, res) => {
   if (price !== undefined) product.price = Number(price);
   if (stock !== undefined) product.stock = Number(stock);
   if (isFeatured !== undefined) product.isFeatured = isFeatured === 'true' || isFeatured === true;
+  if (isAvailable !== undefined) product.isAvailable = isAvailable === 'true' || isAvailable === true;
   if (shapeOptions) {
     product.shapeOptions = typeof shapeOptions === 'string' ? JSON.parse(shapeOptions) : shapeOptions;
   }
 
-  // Handle new image uploads
-  if (req.files && req.files.length > 0) {
-    const newImages = req.files.map((f) => f.path);
-    product.images = [...product.images, ...newImages];
-  }
+  // Clean existing images in case any Windows paths were stored
+  product.images = (product.images || []).map(cleanImagePath);
 
-  // Remove specific images
+  // Remove specific images requested by admin
   if (removeImages) {
     const toRemove = typeof removeImages === 'string' ? JSON.parse(removeImages) : removeImages;
-    // Delete from Cloudinary
     for (const imgUrl of toRemove) {
       try {
         const publicId = imgUrl.split('/').slice(-2).join('/').split('.')[0];
@@ -139,7 +197,19 @@ const updateProduct = async (req, res) => {
         // Continue even if Cloudinary delete fails
       }
     }
-    product.images = product.images.filter((img) => !toRemove.includes(img));
+    const cleanToRemove = toRemove.map(cleanImagePath);
+    product.images = product.images.filter((img) => !cleanToRemove.includes(img) && !toRemove.includes(img));
+  }
+
+  // Handle new image uploads (ensure /uploads/ format, not disk path)
+  if (req.files && req.files.length > 0) {
+    const newImages = req.files.map((f) => {
+      if (f.path && (f.path.startsWith('http://') || f.path.startsWith('https://'))) {
+        return f.path;
+      }
+      return `/uploads/${f.filename}`;
+    });
+    product.images = [...product.images, ...newImages];
   }
 
   await product.save();

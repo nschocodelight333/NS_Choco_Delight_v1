@@ -82,6 +82,9 @@ const createReview = async (req, res) => {
     comment,
   });
 
+  // Explicitly trigger rating calculation on product
+  await Review.calcAverageRating(productId);
+
   // Populate user name for response
   await review.populate('user', 'name');
 

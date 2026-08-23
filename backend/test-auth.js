@@ -1,6 +1,7 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
-const password = '31Kgcv5ElAZfPF66';
-const cluster = 'cluster0.aio16sr.mongodb.net';
+const password = process.env.MONGO_PASSWORD || 'your_password_here';
+const cluster = process.env.MONGO_CLUSTER || 'cluster0.xxxxx.mongodb.net';
 const usernames = ['sksha', 'admin', 'root', 'chaco', 'delight', 'chaco-delight', 'ns_chaco_delight', 'user', 'test', 'sksharma'];
 
 async function testAuth() {

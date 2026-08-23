@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { createRazorpayOrder, verifyPayment } from '../api/payment';
 import { createOrder } from '../api/orders';
+import { getImageUrl } from '../utils/imageUrl';
 import toast from 'react-hot-toast';
 
 const DELIVERY_FEE = 40;
@@ -57,6 +58,11 @@ const Checkout = () => {
     try {
       const newOrder = await createOrder({
         deliveryAddress: address,
+        items: items.map((i) => ({
+          productId: i.product?._id || i.product,
+          quantity: i.quantity,
+          shape: i.shape || '',
+        })),
         paymentInfo: {
           status: 'cod',
           razorpayOrderId: '',
@@ -66,79 +72,36 @@ const Checkout = () => {
       });
 
       toast.success('Order placed successfully with Cash on Delivery! 🍫');
-      navigate(`/order-confirmation/${newOrder.data.order._id}`);
+      navigate(`/order-confirmation/${newOrder.data.order._id}`, { replace: true });
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to place order. Please try again.');
       setPaying(false);
     }
   };
 
-  // Place order with Online Payment (Razorpay / GPay / UPI / Cards)
+  // Place order with Online Payment (PhonePe / Paytm / GPay / 8185920511)
   const handleOnlinePayment = async () => {
     setPaying(true);
 
     try {
-      // Step 1: Create Razorpay order on backend
-      const orderRes = await createRazorpayOrder(totalAmount);
-      const { orderId, amount, currency, keyId } = orderRes.data;
-
-      // Step 2: Open Razorpay Checkout
-      const options = {
-        key: keyId,
-        amount,
-        currency,
-        name: 'NS Choco Delight',
-        description: 'Homemade Chocolates Order',
-        order_id: orderId,
-        prefill: {
-          name: user?.name || '',
-          email: user?.email || '',
-          contact: address.phone || user?.phone || '',
+      const newOrder = await createOrder({
+        deliveryAddress: address,
+        items: items.map((i) => ({
+          productId: i.product?._id || i.product,
+          quantity: i.quantity,
+          shape: i.shape || '',
+        })),
+        paymentInfo: {
+          status: 'pending',
+          paymentMethod: 'online',
+          phone: '8185920511',
         },
-        theme: {
-          color: '#3E2723',
-        },
-        handler: async (response) => {
-          try {
-            // Step 3: Verify payment on backend
-            const verifyRes = await verifyPayment({
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-            });
+      });
 
-            // Step 4: Create order in DB
-            const newOrder = await createOrder({
-              deliveryAddress: address,
-              paymentInfo: verifyRes.data.paymentInfo,
-            });
-
-            toast.success('Online Payment successful! 🎉');
-            navigate(`/order-confirmation/${newOrder.data.order._id}`);
-          } catch (err) {
-            toast.error('Payment verification failed. Please contact support.');
-            setPaying(false);
-          }
-        },
-        modal: {
-          ondismiss: () => {
-            toast('Payment cancelled', { icon: 'ℹ️' });
-            setPaying(false);
-          },
-        },
-      };
-
-      // Check if Razorpay SDK is loaded
-      if (!window.Razorpay) {
-        toast.error('Payment gateway initializing... If it takes too long, check connection.');
-        setPaying(false);
-        return;
-      }
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+      toast.success('Order created! Proceeding to Payment Options... 🍫');
+      navigate(`/online-payment/${newOrder.data.order._id}`, { replace: true });
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Payment initiation failed. Try Cash on Delivery.');
+      toast.error(err.response?.data?.message || 'Failed to initialize order. Please try again.');
       setPaying(false);
     }
   };
@@ -257,7 +220,7 @@ const Checkout = () => {
                   <div key={item._id} className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-lg overflow-hidden bg-choco-50 flex-shrink-0">
                       <img
-                        src={item.product?.images?.[0] || ''}
+                        src={getImageUrl(item.product?.images?.[0]) || ''}
                         alt={item.product?.name}
                         className="w-full h-full object-cover"
                         onError={(e) => { e.target.style.display = 'none'; }}
@@ -319,12 +282,35 @@ const Checkout = () => {
                       <span className="text-xs bg-emerald-100 text-emerald-800 font-medium px-2 py-0.5 rounded-full">Recommended</span>
                     </div>
                     <p className="text-xs text-choco-500 mt-1">
-                      Pay via Google Pay, PhonePe, Paytm, BHIM UPI, Cards, or Net Banking
+                      Pay via PhonePe, Paytm, Google Pay, BHIM UPI, Cards, or Net Banking
                     </p>
-                    <div className="flex gap-1.5 mt-2.5 flex-wrap">
-                      {['GPay 🚀', 'PhonePe', 'Paytm', 'UPI ID', 'Cards'].map((m) => (
-                        <span key={m} className="text-[10px] bg-white text-choco-800 font-medium px-2 py-0.5 rounded border border-choco-200 shadow-2xs">
-                          {m}
+
+                    {/* PhonePe / Paytm / GPay Number Highlight */}
+                    <div className="mt-3 p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200/80 shadow-2xs">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                          <p className="text-xs font-semibold text-choco-900">PhonePe / Paytm / GPay Number</p>
+                          <p className="font-mono font-bold text-amber-950 text-base tracking-wider">8185920511</p>
+                        </div>
+                        <div className="flex gap-1.5 items-center">
+                          <img src="/payments/phonepe.png" alt="PhonePe" className="w-5 h-5 object-contain" />
+                          <img src="/payments/paytm.png" alt="Paytm" className="w-5 h-5 object-contain" />
+                          <img src="/payments/gpay.png" alt="GPay" className="w-5 h-5 object-contain" />
+                          <img src="/payments/navi.png" alt="Navi" className="w-5 h-5 object-contain" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 mt-2.5 flex-wrap items-center">
+                      {[
+                        { name: 'PhonePe', icon: '/payments/phonepe.png' },
+                        { name: 'Google Pay', icon: '/payments/gpay.png' },
+                        { name: 'Paytm', icon: '/payments/paytm.png' },
+                        { name: 'Navi Pay', icon: '/payments/navi.png' },
+                      ].map((m) => (
+                        <span key={m.name} className="text-[11px] bg-white text-choco-900 font-semibold px-2 py-1 rounded-lg border border-choco-200 shadow-2xs flex items-center gap-1.5">
+                          <img src={m.icon} alt={m.name} className="w-3.5 h-3.5 object-contain" />
+                          {m.name}
                         </span>
                       ))}
                     </div>
@@ -376,7 +362,7 @@ const Checkout = () => {
                   Processing Order...
                 </span>
               ) : paymentMethod === 'online' ? (
-                `💳 Pay ₹${totalAmount} via GPay / UPI / Card`
+                `💳 Pay ₹${totalAmount} via PhonePe / Paytm / GPay (8185920511)`
               ) : (
                 `📦 Place Order with Cash on Delivery (₹${totalAmount})`
               )}

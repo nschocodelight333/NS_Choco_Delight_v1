@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { getCampaign } from '../api/campaigns';
+import { getImageUrl } from '../utils/imageUrl';
 import ProductCard from '../components/ProductCard';
 
 const OCCASION_EMOJIS = {
@@ -61,7 +62,7 @@ const CampaignPage = () => {
         {campaign.bannerImageUrl ? (
           <>
             <div className="absolute inset-0">
-              <img src={campaign.bannerImageUrl} alt={campaign.title} className="w-full h-full object-cover" />
+              <img src={getImageUrl(campaign.bannerImageUrl)} alt={campaign.title} className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-choco-900/65" />
             </div>
           </>
@@ -108,7 +109,7 @@ const CampaignPage = () => {
                 >
                   {hamper.imageUrl ? (
                     <div className="aspect-[4/3] overflow-hidden">
-                      <img src={hamper.imageUrl} alt={hamper.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <img src={getImageUrl(hamper.imageUrl)} alt={hamper.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     </div>
                   ) : (
                     <div className="aspect-[4/3] bg-gradient-to-br from-choco-800 to-choco-900 flex items-center justify-center">

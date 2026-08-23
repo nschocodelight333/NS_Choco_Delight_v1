@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getProducts, createProduct, updateProduct, deleteProduct } from '../../api/products';
+import { getImageUrl } from '../../utils/imageUrl';
 import toast from 'react-hot-toast';
 
 const PLACEHOLDER = 'https://images.unsplash.com/photo-1481391319762-47dff72954d9?w=200&q=60';
@@ -14,7 +15,7 @@ const ImagePreviewGrid = ({ existingImages, newFiles, onRemoveExisting, onRemove
     <div className="flex flex-wrap gap-2 mt-3">
       {existingImages?.map((url, i) => (
         <div key={`existing-${i}`} className="relative group">
-          <img src={url} alt="" className="w-16 h-16 rounded-xl object-cover border-2 border-choco-200" />
+          <img src={getImageUrl(url)} alt="" className="w-16 h-16 rounded-xl object-cover border-2 border-choco-200" />
           <button
             type="button"
             onClick={() => onRemoveExisting(url)}
@@ -569,7 +570,7 @@ const AdminProducts = () => {
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl overflow-hidden bg-choco-50 flex-shrink-0 border border-choco-100">
                           <img
-                            src={product.images?.[0] || PLACEHOLDER}
+                            src={getImageUrl(product.images?.[0]) || PLACEHOLDER}
                             alt={product.name}
                             className="w-full h-full object-cover"
                             onError={(e) => { e.target.src = PLACEHOLDER; }}
@@ -642,7 +643,7 @@ const AdminProducts = () => {
             >
               <div className="relative aspect-square bg-choco-50">
                 <img
-                  src={product.images?.[0] || PLACEHOLDER}
+                  src={getImageUrl(product.images?.[0]) || PLACEHOLDER}
                   alt={product.name}
                   className="w-full h-full object-cover"
                   onError={(e) => { e.target.src = PLACEHOLDER; }}

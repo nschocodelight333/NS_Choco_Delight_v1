@@ -1,10 +1,11 @@
 const express = require('express');
-const { getActiveCampaigns, getCampaign } = require('../controllers/campaignController');
+const { getPublishedCampaigns, getCampaignBySlug } = require('../controllers/campaignController');
 
 const router = express.Router();
 
 // Public routes — no auth required
-router.get('/active', getActiveCampaigns);
-router.get('/:id', getCampaign);
+router.get('/', getPublishedCampaigns);
+router.get('/active', getPublishedCampaigns); // Fallback alias
+router.get('/:slug', getCampaignBySlug);
 
 module.exports = router;

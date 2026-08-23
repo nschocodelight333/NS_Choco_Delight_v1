@@ -5,6 +5,7 @@ const {
   getOrder,
   createManualOrder,
   updateOrderStatus,
+  confirmOrderPayment,
 } = require('../controllers/orderController');
 const { protect } = require('../middleware/auth');
 const { adminOnly } = require('../middleware/admin');
@@ -17,5 +18,6 @@ router.route('/').get(getOrders).post(createOrder);
 router.route('/manual').post(adminOnly, createManualOrder);
 router.route('/:id').get(getOrder);
 router.route('/:id/status').put(adminOnly, updateOrderStatus);
+router.route('/:id/confirm-payment').put(confirmOrderPayment);
 
 module.exports = router;

@@ -9,36 +9,62 @@ const FREE_DELIVERY_THRESHOLD = 500;
 // @route   POST /api/orders
 // @access  Protected
 const createOrder = async (req, res) => {
-  const { deliveryAddress, paymentInfo } = req.body;
+  const { deliveryAddress, paymentInfo, items: reqItems } = req.body;
 
-  // Get user cart
-  const cart = await Cart.findOne({ user: req.user._id }).populate('items.product');
-  if (!cart || cart.items.length === 0) {
+  // Get user cart from DB
+  let cart = await Cart.findOne({ user: req.user._id }).populate('items.product');
+
+  // Build raw list of items (either from DB cart or from request payload fallback)
+  let rawItems = [];
+  if (cart && cart.items && cart.items.length > 0) {
+    rawItems = cart.items.map((i) => ({
+      productId: i.product?._id || i.product,
+      productObj: i.product && i.product.name ? i.product : null,
+      quantity: i.quantity,
+      shape: i.shape || '',
+    }));
+  } else if (reqItems && Array.isArray(reqItems) && reqItems.length > 0) {
+    rawItems = reqItems.map((i) => ({
+      productId: i.productId || i.product?._id || i.product,
+      quantity: i.quantity,
+      shape: i.shape || '',
+    }));
+  }
+
+  if (rawItems.length === 0) {
     return res.status(400).json({ success: false, message: 'Cart is empty.' });
   }
 
-  // Build order items and deduct stock
   const orderItems = [];
-  for (const item of cart.items) {
-    const product = item.product;
+  for (const item of rawItems) {
+    let product = item.productObj;
+    if (!product || !product.stock) {
+      product = await Product.findById(item.productId);
+    }
     if (!product) continue;
+
     if (product.stock < item.quantity) {
       return res.status(400).json({
         success: false,
-        message: `${product.name} is out of stock.`,
+        message: `${product.name} is out of stock (Available: ${product.stock}).`,
       });
     }
+
     product.stock -= item.quantity;
     await product.save();
 
     orderItems.push({
       product: product._id,
       name: product.name,
-      image: product.images[0] || '',
+      image: product.images?.[0] || '',
       price: product.price,
       quantity: item.quantity,
       shape: item.shape || '',
     });
+  }
+
+  if (orderItems.length === 0) {
+    return res.status(400).json({ success: false, message: 'No valid items found in cart.' });
   }
 
   const itemsTotal = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
@@ -56,7 +82,7 @@ const createOrder = async (req, res) => {
     orderStatus: paymentInfo?.status === 'paid' ? 'Confirmed' : 'Pending',
   });
 
-  // Clear the cart after order creation
+  // Clear the cart in DB after order creation
   await Cart.findOneAndUpdate({ user: req.user._id }, { items: [] });
 
   res.status(201).json({ success: true, order });
@@ -204,7 +230,7 @@ const createManualOrder = async (req, res) => {
 // @access  Admin
 const updateOrderStatus = async (req, res) => {
   const { orderStatus } = req.body;
-  const validStatuses = ['Pending', 'Confirmed', 'Preparing', 'Out for Delivery', 'Delivered', 'Cancelled'];
+  const validStatuses = ['Pending', 'Confirmed', 'Preparing', 'Prepared', 'Out for Delivery', 'Delivered', 'Cancelled'];
 
   if (!validStatuses.includes(orderStatus)) {
     return res.status(400).json({ success: false, message: 'Invalid order status.' });
@@ -225,4 +251,34 @@ const updateOrderStatus = async (req, res) => {
   res.json({ success: true, order });
 };
 
-module.exports = { createOrder, getOrders, getOrder, createManualOrder, updateOrderStatus };
+// @desc    Confirm customer online payment (save UTR / payment method)
+// @route   PUT /api/orders/:id/confirm-payment
+// @access  Protected
+const confirmOrderPayment = async (req, res) => {
+  const { paymentMethod, transactionId } = req.body;
+  const order = await Order.findById(req.params.id);
+
+  if (!order) {
+    return res.status(404).json({ success: false, message: 'Order not found.' });
+  }
+
+  // Ensure user owns order or is admin
+  if (req.user.role !== 'admin' && order.user.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ success: false, message: 'Not authorized.' });
+  }
+
+  order.paymentInfo = {
+    ...order.paymentInfo,
+    status: 'paid',
+    paymentMethod: paymentMethod || 'online_upi',
+    transactionId: transactionId || '',
+    paidAt: new Date(),
+  };
+  order.orderStatus = 'Confirmed';
+
+  await order.save();
+
+  res.json({ success: true, order });
+};
+
+module.exports = { createOrder, getOrders, getOrder, createManualOrder, updateOrderStatus, confirmOrderPayment };

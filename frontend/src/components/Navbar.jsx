@@ -20,6 +20,7 @@ const Navbar = () => {
   const navLinks = [
     { to: '/', label: 'Home' },
     { to: '/products', label: 'Shop' },
+    { to: '/special-occasions', label: '🎉 Special Occasion' },
     { to: '/customize', label: '✨ Customize' },
     { to: '/about', label: 'About' },
     { to: '/contact', label: 'Contact' },
