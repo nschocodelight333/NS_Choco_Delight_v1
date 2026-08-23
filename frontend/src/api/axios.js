@@ -20,13 +20,12 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 globally — clear token and redirect ONLY on explicit auth protected routes
+// Handle 401 globally — clean session storage gracefully without forcing window reloads
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       const requestUrl = error.config?.url || '';
-      // ONLY trigger auto-logout if the failed request was specifically an auth route (/auth/me, /orders, /admin)
       const isAuthProtected =
         requestUrl.includes('/auth/me') ||
         requestUrl.includes('/orders') ||
@@ -35,12 +34,6 @@ api.interceptors.response.use(
       if (isAuthProtected) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        if (
-          !window.location.pathname.includes('/login') &&
-          !window.location.pathname.includes('/register')
-        ) {
-          window.location.href = '/login';
-        }
       }
     }
     return Promise.reject(error);

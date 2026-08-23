@@ -7,7 +7,9 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
+      const token = localStorage.getItem('token');
       const stored = localStorage.getItem('user');
+      if (!token) return null;
       return stored && stored !== 'undefined' && stored !== 'null' ? JSON.parse(stored) : null;
     } catch (e) {
       localStorage.removeItem('user');
@@ -29,7 +31,6 @@ export const AuthProvider = ({ children }) => {
           }
         })
         .catch((err) => {
-          // ONLY clear session if backend explicitly returned 401/403 (expired/invalid token).
           if (err.response?.status === 401 || err.response?.status === 403) {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
@@ -38,6 +39,7 @@ export const AuthProvider = ({ children }) => {
         })
         .finally(() => setLoading(false));
     } else {
+      setUser(null);
       setLoading(false);
     }
   }, []);

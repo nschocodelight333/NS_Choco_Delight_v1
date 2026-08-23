@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 
 const Login = () => {
-  const { user, login } = useAuth();
+  const { user, loading: authLoading, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/';
@@ -15,10 +15,10 @@ const Login = () => {
   const [showPwd, setShowPwd] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (!authLoading && user) {
       navigate(user.role === 'admin' ? '/admin' : from, { replace: true });
     }
-  }, [user, navigate, from]);
+  }, [user, authLoading, navigate, from]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
