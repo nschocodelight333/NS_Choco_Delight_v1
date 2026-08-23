@@ -109,28 +109,182 @@ const createOrder = async (req, res) => {
   res.status(201).json({ success: true, order });
 };
 
-// @desc    Get user orders
-// @route   GET /api/orders/myorders
+// @desc    Get orders (own for customer, all for admin)
+// @route   GET /api/orders
 // @access  Protected
+const getOrders = async (req, res) => {
+  const { all, status, page = 1, limit = 20 } = req.query;
+
+  const query = {};
+  if (req.user.role !== 'admin' || all !== 'true') {
+    query.user = req.user._id;
+  }
+  if (status) query.orderStatus = status;
+
+  const skip = (Number(page) - 1) * Number(limit);
+  const total = await Order.countDocuments(query);
+
+  const orders = await Order.find(query)
+    .populate('user', 'name email phone')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(Number(limit));
+
+  res.json({ success: true, total, orders });
+};
+
+// Alias for customer get my orders
 const getMyOrders = async (req, res) => {
   const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
   res.json({ success: true, orders });
 };
 
-// @desc    Get order by ID
+// @desc    Get single order
 // @route   GET /api/orders/:id
 // @access  Protected
-const getOrderById = async (req, res) => {
-  const order = await Order.findById(req.params.id).populate('user', 'name email');
+const getOrder = async (req, res) => {
+  const order = await Order.findById(req.params.id).populate('user', 'name email phone');
+  if (!order) {
+    return res.status(404).json({ success: false, message: 'Order not found.' });
+  }
+
+  // Customers can only view their own orders
+  if (req.user.role !== 'admin') {
+    if (!order.user || order.user._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized to view this order.' });
+    }
+  }
+
+  res.json({ success: true, order });
+};
+
+const getOrderById = getOrder;
+
+// @desc    Create manual WhatsApp order (admin only)
+// @route   POST /api/orders/manual
+// @access  Admin
+const createManualOrder = async (req, res) => {
+  const { customerName, customerPhone, address, items, paymentStatus, notes } = req.body;
+
+  if (!customerName || !customerPhone || !items || items.length === 0) {
+    return res.status(400).json({ success: false, message: 'Missing required customer details or order items.' });
+  }
+
+  const orderItems = [];
+  for (const item of items) {
+    const { productId, quantity, shape, price: customPrice } = item;
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ success: false, message: `Product not found with ID ${productId}` });
+    }
+    if (product.stock < quantity) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient stock for product: ${product.name}. Available: ${product.stock}, Requested: ${quantity}`,
+      });
+    }
+
+    product.stock -= Number(quantity);
+    await product.save();
+
+    const finalPrice = customPrice !== undefined && customPrice !== null && customPrice !== ''
+      ? Number(customPrice)
+      : product.price;
+
+    orderItems.push({
+      product: product._id,
+      name: product.name,
+      image: product.images[0] || '',
+      price: finalPrice,
+      quantity: Number(quantity),
+      shape: shape || '',
+    });
+  }
+
+  const itemsTotal = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const deliveryFee = itemsTotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
+  const totalAmount = itemsTotal + deliveryFee;
+
+  const order = await Order.create({
+    orderSource: 'whatsapp',
+    guestCustomer: {
+      name: customerName,
+      phone: customerPhone,
+      address: {
+        street: address?.street || '',
+        city: address?.city || '',
+        state: address?.state || '',
+        pincode: address?.pincode || '',
+      },
+    },
+    deliveryAddress: {
+      street: address?.street || '',
+      city: address?.city || '',
+      state: address?.state || '',
+      pincode: address?.pincode || '',
+      phone: customerPhone,
+    },
+    items: orderItems,
+    itemsTotal,
+    deliveryFee,
+    totalAmount,
+    paymentInfo: { status: paymentStatus || 'pending' },
+    orderStatus: 'Confirmed',
+    notes: notes || '',
+  });
+
+  res.status(201).json({ success: true, order });
+};
+
+// @desc    Update order status (admin only)
+// @route   PUT /api/orders/:id/status
+// @access  Admin
+const updateOrderStatus = async (req, res) => {
+  const { orderStatus } = req.body;
+  const validStatuses = ['Pending', 'Confirmed', 'Preparing', 'Prepared', 'Out for Delivery', 'Delivered', 'Cancelled'];
+
+  if (!validStatuses.includes(orderStatus)) {
+    return res.status(400).json({ success: false, message: 'Invalid order status.' });
+  }
+
+  const order = await Order.findByIdAndUpdate(
+    req.params.id,
+    { orderStatus },
+    { new: true }
+  ).populate('user', 'name email phone');
 
   if (!order) {
     return res.status(404).json({ success: false, message: 'Order not found.' });
   }
 
-  // Allow owner or admin to access
-  if (order.user._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-    return res.status(403).json({ success: false, message: 'Not authorized to view this order.' });
+  res.json({ success: true, order });
+};
+
+// @desc    Confirm customer online payment (save UTR / payment method)
+// @route   PUT /api/orders/:id/confirm-payment
+// @access  Protected
+const confirmOrderPayment = async (req, res) => {
+  const { paymentMethod, transactionId } = req.body;
+  const order = await Order.findById(req.params.id);
+
+  if (!order) {
+    return res.status(404).json({ success: false, message: 'Order not found.' });
   }
+
+  if (req.user.role !== 'admin' && order.user.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ success: false, message: 'Not authorized.' });
+  }
+
+  order.paymentInfo = {
+    ...order.paymentInfo,
+    status: 'paid',
+    paymentMethod: paymentMethod || 'online_upi',
+    transactionId: transactionId || '',
+    paidAt: new Date(),
+  };
+  order.orderStatus = 'Confirmed';
+
+  await order.save();
 
   res.json({ success: true, order });
 };
@@ -156,7 +310,6 @@ const cancelOrder = async (req, res) => {
     });
   }
 
-  // Restore product stock
   for (const item of order.items) {
     await Product.findByIdAndUpdate(item.product, {
       $inc: { stock: item.quantity },
@@ -171,7 +324,12 @@ const cancelOrder = async (req, res) => {
 
 module.exports = {
   createOrder,
+  getOrders,
   getMyOrders,
+  getOrder,
   getOrderById,
+  createManualOrder,
+  updateOrderStatus,
+  confirmOrderPayment,
   cancelOrder,
 };
