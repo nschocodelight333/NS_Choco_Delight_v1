@@ -9,32 +9,34 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error('🚨 Unhandled Promise Rejection caught:', event.reason);
 });
 
-// Clear stale service worker caches on localhost to ensure clean hot-reloading
-if ('serviceWorker' in navigator) {
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+// Safe Service Worker cleanup in dev mode — never blocks React mounting
+try {
+  if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then((registrations) => {
       for (let registration of registrations) {
-        registration.unregister();
+        registration.unregister().catch(() => {});
       }
-    });
+    }).catch(() => {});
+
     if ('caches' in window) {
       caches.keys().then((names) => {
         for (let name of names) {
-          caches.delete(name);
+          caches.delete(name).catch(() => {});
         }
-      });
+      }).catch(() => {});
     }
-  } else {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    });
   }
+} catch (err) {
+  console.warn('SW Cleanup note:', err);
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </React.StrictMode>
-);
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  ReactDOM.createRoot(rootElement).render(
+    <React.StrictMode>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </React.StrictMode>
+  );
+}
