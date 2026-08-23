@@ -9,21 +9,32 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error('🚨 Unhandled Promise Rejection caught:', event.reason);
 });
 
+// Clear stale service worker caches on localhost to ensure clean hot-reloading
+if ('serviceWorker' in navigator) {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (let registration of registrations) {
+        registration.unregister();
+      }
+    });
+    if ('caches' in window) {
+      caches.keys().then((names) => {
+        for (let name of names) {
+          caches.delete(name);
+        }
+      });
+    }
+  } else {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
       <App />
     </ErrorBoundary>
-  </React.StrictMode>,
+  </React.StrictMode>
 );
-
-// Register Service Worker for PWA browser address bar installability
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then((reg) => {
-      console.log('✅ PWA ServiceWorker active on localhost:', reg.scope);
-    }).catch((err) => {
-      console.log('PWA ServiceWorker registration failed: ', err);
-    });
-  });
-}
