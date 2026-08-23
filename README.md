@@ -1,335 +1,366 @@
+# 🍫 NS Choco Delight — Handcrafted Chocolates E-Commerce Platform
 
-# 🍫 Choco Delight — Homemade Chocolates E-Commerce
-
-> **Made with Heart, Meant to Celebrate.**
-> A production-ready full-stack e-commerce application for a homemade chocolate brand.
+> **Made with Heart, Meant to Celebrate.**  
+> *Official Full-Stack Web & Mobile E-Commerce Ecosystem for NS Choco Delight — Tadepalligudem, Andhra Pradesh, India.*
 
 ---
 
-## 🏃 How to Run
+[![CI/CD Safety Pipeline](https://github.com/skshafiulla/NS_Chaco_Delight/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/skshafiulla/NS_Chaco_Delight/actions/workflows/ci-cd.yml)
+[![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
+[![React Version](https://img.shields.io/badge/react-18.2.0-blue.svg)](https://react.dev/)
+[![Express Version](https://img.shields.io/badge/express-4.18.2-lightgrey.svg)](https://expressjs.com/)
+[![MongoDB Mongoose](https://img.shields.io/badge/mongoose-8.1.1-green.svg)](https://mongoosejs.com/)
+[![Capacitor Native](https://img.shields.io/badge/capacitor-8.5.0-blueviolet.svg)](https://capacitorjs.com/)
 
-### 1. Backend Server (Express & MongoDB)
+---
+
+## 📋 Table of Contents
+1. [Project Overview](#1-project-overview)
+2. [Features](#2-features)
+3. [Tech Stack](#3-tech-stack)
+4. [System Architecture](#4-system-architecture)
+5. [Project Structure](#5-project-structure)
+6. [Core Workflows](#6-core-workflows)
+7. [Environment Variables](#7-environment-variables)
+8. [Getting Started / Local Setup](#8-getting-started--local-setup)
+9. [Testing](#9-testing)
+10. [Deployment](#10-deployment)
+11. [Mobile App (PWA & Android)](#11-mobile-app-pwa--android)
+12. [Security Notes](#12-security-notes)
+13. [Contributing](#13-contributing)
+14. [License & Ownership](#14-license--ownership)
+
+---
+
+## 1. Project Overview
+
+**NS Choco Delight** is a production-ready, full-stack e-commerce application engineered for a premium homemade chocolate business headquartered in Tadepalligudem, Andhra Pradesh. The platform bridges the gap between traditional artisanal chocolate crafting and modern digital e-commerce, offering customers in India a rich web and native mobile experience to order handcrafted, customizable chocolates.
+
+The platform resolves local commerce bottlenecks by automating custom shape and flavor quote requests, integrating instant WhatsApp customer support, offering zero-delivery-fee local takeaway fulfillment, and providing real-time sales and inventory telemetry for store administrators.
+
+### 🌟 Key Highlights
+- **✨ Interactive Custom Chocolate Designer**: Allows customers to design custom chocolates by picking shapes, text printing, flavors, and uploading reference photos.
+- **💬 WhatsApp & Direct Ordering Integration**: Instant single-click WhatsApp order generation and direct customer contact shortcuts.
+- **📊 Real-time Executive Admin Dashboard**: Live sales telemetry, order fulfillment tracking, revenue stats, and customer directory analytics.
+- **🎉 Dynamic Special Occasions System**: Automated holiday teaser banners, launch countdowns, and published campaign product showcase pages.
+- **📱 PWA & Cross-Platform Mobile**: Installable Progressive Web App (PWA) plus native Android APK support via Capacitor.
+
+---
+
+## 2. Features
+
+### 🛍️ Customer-Facing Features
+- **Product Catalog & Filtering**: Browse handcrafted chocolates categorized into Normal/Heart Shapes (Pistachio Kunafa, Nutella Kunafa, Dark Chocolate, etc.) and Bite-sized pieces.
+- **Interactive Custom Chocolate Builder**: Request bespoke orders with custom inscriptions, reference photo uploads, and flavor options.
+- **Cart & Dynamic Pricing**: Real-time cart calculations, automatic free delivery eligibility thresholding (orders ≥ ₹500), and item quantity controls.
+- **Saved Address & Auto-Fill Profile**: Auto-populates stored delivery address details with multi-address selection capabilities during checkout.
+- **Flexible Payment & Fulfillment**:
+  - **Cash on Delivery (COD)**
+  - **Online Payment** (Razorpay Instant UPI, Debit/Credit Card, Net Banking)
+  - **Takeaway Pick-up** (Automatically waives delivery fees to ₹0)
+- **Order Tracking & History**: Live order status timeline (`Pending` → `Confirmed` → `Preparing` → `Prepared` → `Out for Delivery` → `Delivered`).
+- **Verified Purchase Reviews**: Star ratings and text reviews linked to confirmed customer orders.
+- **Special Occasion Collections**: Dedicated campaign landing pages for festivals like New Year, Valentine's Day, and Diwali (`/special-occasions`).
+
+### 👑 Admin Management Features
+- **Executive Operations Dashboard**: High-level telemetry showing total revenue, pending orders, custom request volume, and customer growth.
+- **Catalog & Stock Management**: Add, update, or remove products, upload high-resolution images, set stock levels, and toggle featured badges.
+- **Order Fulfillment Pipeline**: Manage order statuses from order placement to final delivery or cancellation.
+- **Custom Request Quoting Engine**: Review customer custom requests, inspect uploaded reference photos, assign custom price quotes, and manage customer responses.
+- **Campaign Manager**: Create holiday campaigns, schedule start/end dates, set custom banners, attach products, and toggle instant publication gates.
+- **Review Moderation**: Inspect customer reviews and ratings directly from the admin dashboard.
+- **Customer CRM Directory**: View customer profiles, order count, total spending, and initiate direct call/WhatsApp actions.
+
+### 📱 Mobile & PWA Features
+- **Installable PWA**: Add to Home Screen prompts with offline resilience and Network-First caching.
+- **Native Android App**: Powered by Capacitor 8.5 with native status bar styling and hardware back button handling.
+
+---
+
+## 3. Tech Stack
+
+### 🎨 Frontend
+| Layer | Technology / Package | Version |
+| :--- | :--- | :--- |
+| **Framework & Bundler** | React + Vite (`@vitejs/plugin-react`) | React `v18.2.0` / Vite `v5.1.0` |
+| **Styling** | TailwindCSS + PostCSS + Autoprefixer | Tailwind `v3.4.1` |
+| **State Management** | React Context (`AuthContext`, `CartContext`) + Zustand | Zustand `v4.5.0` |
+| **Routing** | React Router DOM | `v6.22.0` |
+| **HTTP Client** | Axios | `v1.6.7` |
+| **Charts & Telemetry** | Recharts | `v2.12.7` |
+| **Animations** | Framer Motion | `v11.0.5` |
+| **UI Components** | Headless UI + React Hot Toast + ES-Toolkit | `@headlessui/react v1.7.18` / `react-hot-toast v2.4.1` |
+| **Mobile Runtime** | Capacitor (Core, CLI, Android, iOS, Status Bar, App) | `@capacitor/core v8.5.0` |
+
+### ⚙️ Backend
+| Layer | Technology / Package | Version |
+| :--- | :--- | :--- |
+| **Runtime & Server** | Node.js (Engine `>=18.0.0`) + Express.js | Express `v4.18.2` |
+| **Database & ODM** | MongoDB Atlas + Mongoose | Mongoose `v8.1.1` |
+| **Authentication** | JSON Web Tokens (`jsonwebtoken`) + Bcrypt (`bcryptjs`) | JWT `v9.0.2` / Bcrypt `v2.4.3` |
+| **Media Management** | Multer + Cloudinary Storage | `multer v1.4.5-lts.1` / `cloudinary v1.41.3` |
+| **Payment Gateway** | Razorpay Node SDK | `v2.9.2` |
+| **Validation** | Express-Validator | `v7.0.1` |
+| **Monitoring & Logs** | Sentry Node SDK + Morgan | `@sentry/node v10.70.0` / `morgan v1.10.0` |
+| **Testing** | Jest + Supertest + MongoMemoryServer + Cross-Env | Jest `v30.4.2` / Supertest `v7.2.2` |
+
+### 🌐 Infrastructure & Hosting
+- **Database Host**: MongoDB Atlas Cloud NoSQL
+- **Frontend Hosting**: Vercel
+- **Backend Hosting**: Render Web Services
+- **CI/CD Pipeline**: GitHub Actions (`.github/workflows/ci-cd.yml`)
+
+---
+
+## 4. System Architecture
+
+```mermaid
+graph TD
+    Client[Browser / Mobile PWA / Android APK] -->|HTTPS Requests| Frontend[React + Vite Frontend — Vercel]
+    Frontend -->|REST API Calls / JSON| Backend[Node.js + Express API — Render]
+    Backend -->|Mongoose ODM| DB[(MongoDB Atlas Cloud NoSQL)]
+    Backend -->|Payment Verification| Razorpay[Razorpay Payment API]
+    Backend -->|Media Uploads| Cloudinary[Cloudinary CDN Storage]
+```
+
+### Request & Data Flow
+1. **Client Interaction**: Users interact with the React Single Page Application (SPA) or Android APK.
+2. **State & API Gateway**: Component actions invoke Axios API handlers (`/src/api/*`), attaching JWT authentication headers from `localStorage`.
+3. **Backend Processing**: Express middlewares (`/middleware/auth.js`, `/middleware/admin.js`) validate JWT tokens and forward sanitized requests to route controllers.
+4. **Data Persistence**: Controllers interact with MongoDB Atlas via Mongoose models. Media files pass through Multer to Cloudinary CDN, while payment transactions are verified against Razorpay's API.
+
+---
+
+## 5. Project Structure
+
+```
+NS_Chaco_Delight/
+├── .github/
+│   └── workflows/
+│       └── ci-cd.yml             # GitHub Actions CI/CD automated test & build pipeline
+├── backend/
+│   ├── config/
+│   │   └── db.js                 # MongoDB connection manager (Cloud, Local & In-Memory fallback)
+│   ├── controllers/              # Express API route controllers (Auth, Products, Orders, etc.)
+│   ├── middleware/               # Auth guards, admin checks, error handler, Multer uploads
+│   ├── models/                   # Mongoose database schemas (User, Product, Order, Campaign, etc.)
+│   ├── public/uploads/           # Local fallback storage for media uploads
+│   ├── routes/                   # Express endpoint routing definitions
+│   ├── tests/                    # Jest automated integration test suites (Auth, Campaign, Product, Review)
+│   ├── seed.js                   # Catalog product seeder script (16 default products)
+│   ├── seed-admin.js             # Initial admin & default accounts seeder script
+│   └── server.js                 # Express application entrypoint
+├── frontend/
+│   ├── public/                   # Static assets, SVG icons, PWA manifest.json, sw.js
+│   ├── src/
+│   │   ├── api/                  # Axios HTTP client endpoints mapped by resource
+│   │   ├── components/           # Reusable UI components (Navbar, Footer, ProductCard, ErrorBoundary)
+│   │   ├── context/              # React Context Providers (AuthContext, CartContext)
+│   │   ├── hooks/                # Custom hooks (useAppBackButton for Capacitor Android)
+│   │   ├── pages/                # Customer and Admin view pages
+│   │   ├── utils/                # Helper utilities (WhatsApp URL builder, image URL formatters)
+│   │   ├── App.jsx               # React Router DOM route hierarchy & Layout wrappers
+│   │   ├── index.css             # TailwindCSS base styles and custom utility layers
+│   │   └── main.jsx              # React DOM mounting entrypoint
+│   ├── capacitor.config.json     # Capacitor mobile app configuration
+│   ├── tailwind.config.js        # Custom Tailwind color palette & font definitions
+│   └── vite.config.js            # Vite bundler, proxy rules, and dev server header settings
+├── API_CONTRACT.md               # API endpoint documentation
+├── CHECKLIST.md                  # Development verification checklist
+├── CONTRIBUTING.md               # Developer contribution guidelines
+└── README.md                     # Project master documentation
+```
+
+---
+
+## 6. Core Workflows
+
+### 🛒 1. Customer Standard Order Flow
+1. **Browse Catalog**: Customer browses products on `/products` or filters by shape category.
+2. **Add to Cart**: Customer selects item quantity and shape options.
+3. **Checkout**: Customer navigates to `/checkout`, chooses saved delivery address or enters a new one, and picks a fulfillment option (**COD**, **Online Payment**, or **Takeaway**).
+4. **Order Confirmation**: Order is saved with `Pending`/`Confirmed` status, and the customer is redirected to `/order-confirmation/:id`.
+5. **Fulfillment & Delivery**: Admin updates order status on `/admin/orders`. Once marked `Delivered`, the customer can submit product reviews.
+
+### ✨ 2. Custom Chocolate Request Flow
+1. **Design Request**: Customer fills the custom chocolate form on `/customize` (selecting custom shape, inscription text, flavor notes, and optional reference image).
+2. **Admin Review & Quote**: Request appears on Admin `/admin/custom-requests`. Admin inspects specifications and submits a custom price quote in ₹ INR.
+3. **Customer Action**: Customer views the quote under `/my-custom-orders` and accepts or rejects the quote.
+4. **Checkout**: Accepting the quote opens the checkout workflow for payment and address selection.
+
+### 🎉 3. Admin Occasion Campaign Flow
+1. **Create Campaign**: Admin navigates to `/admin/campaigns`, inputs occasion details (e.g., "Valentine's Special"), date range, banner image, and selects tagged products.
+2. **Publish Gate**: Admin sets status to `Published`.
+3. **Public Visibility**: Published campaigns automatically display on `/special-occasions` and the Home page occasions showcase section, regardless of date ranges.
+
+### ⭐ 4. Verified Product Review Flow
+1. **Eligibility Check**: After an order is marked `Delivered`, the customer becomes eligible to submit a review on the product details page (`/products/:id`).
+2. **Submission**: Customer rates (1–5 stars) and writes feedback.
+3. **Aggregation & Moderation**: Average product rating updates automatically and the review appears in Admin `/admin/reviews`.
+
+---
+
+## 7. Environment Variables
+
+### Backend Environment Variables (`backend/.env`)
+
+| Variable Name | Description | Default / Example |
+| :--- | :--- | :--- |
+| `PORT` | Port number for Express server | `5000` |
+| `NODE_ENV` | Environment mode (`development`, `production`, `test`) | `development` |
+| `MONGO_URI` | MongoDB Atlas database connection string | `mongodb+srv://user:pass@cluster.mongodb.net/choco-delight` |
+| `JWT_SECRET` | Secret key used for signing JWT authentication tokens | `your_jwt_secret_key` |
+| `JWT_EXPIRES_IN` | JWT token expiration duration | `7d` |
+| `ADMIN_SECRET` | Secret security code for admin registration | `chocoAdmin2024` |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary account cloud name | `your_cloud_name` |
+| `CLOUDINARY_API_KEY` | Cloudinary API key | `your_api_key` |
+| `CLOUDINARY_API_SECRET` | Cloudinary API secret | `your_api_secret` |
+| `RAZORPAY_KEY_ID` | Razorpay payment gateway Key ID | `rzp_test_xxxxxxxx` |
+| `RAZORPAY_KEY_SECRET` | Razorpay payment gateway Key Secret | `your_razorpay_secret` |
+| `FRONTEND_URL` | Frontend origin URL for CORS policy configuration | `http://localhost:5173` |
+
+### Frontend Environment Variables (`frontend/.env`)
+
+| Variable Name | Description | Default / Example |
+| :--- | :--- | :--- |
+| `VITE_API_URL` | Base URL for backend Express REST API | `http://localhost:5000/api` |
+| `VITE_RAZORPAY_KEY_ID` | Public Razorpay Key ID for client checkout SDK | `rzp_test_xxxxxxxx` |
+
+---
+
+## 8. Getting Started / Local Setup
+
+### Prerequisites
+- **Node.js**: `v18.0.0` or higher installed
+- **npm**: `v9.0.0` or higher installed
+- **MongoDB**: Active MongoDB Atlas cluster URI (or local MongoDB running on `127.0.0.1:27017`). *Note: If MongoDB is unavailable, the backend automatically initializes an in-memory MongoDB instance for local testing.*
+
+### Step-by-Step Installation
+
+#### 1. Clone the Repository
+```bash
+git clone https://github.com/skshafiulla/NS_Chaco_Delight.git
+cd NS_Chaco_Delight
+```
+
+#### 2. Backend Setup
 ```bash
 cd backend
-npm install    # (First time setup)
-npm run dev    # Starts backend API on http://localhost:5000
+npm install
+cp .env.example .env
+# Edit .env with your environment variables
 ```
 
-### 2. Web Frontend (React + Vite)
+Seed the default product catalog (16 products) and default accounts:
 ```bash
-cd frontend
-npm install    # (First time setup)
-npm run dev    # Starts web app on http://localhost:5173
+npm run seed
+npm run seed:admin
 ```
 
-### 3. Mobile Native App (Capacitor — Android & iOS)
+Start backend development server:
+```bash
+npm run dev
+# Server running on http://localhost:5000
+```
 
-#### 🤖 Android (Android Studio / Emulator)
+#### 3. Frontend Setup
+Open a new terminal window:
 ```bash
 cd frontend
+npm install
+cp .env.example .env
+# Edit .env with your environment variables
+```
+
+Start frontend development server:
+```bash
+npm run dev
+# Frontend running on http://localhost:5173
+```
+
+---
+
+## 9. Testing
+
+The backend includes Jest integration test suites covering authentication, product catalog operations, review submission, and occasion campaigns.
+
+### Run Test Suite
+```bash
+cd backend
+npm test
+```
+
+### Test Coverage Files
+- `tests/auth.test.js` — Authentication, registration, JWT profile retrieval.
+- `tests/product.test.js` — Catalog listing, single product fetching.
+- `tests/campaign.test.js` — Campaign publication, upcoming teasers, active status checks.
+- `tests/review.test.js` — Verified review submission, ratings aggregation.
+
+---
+
+## 10. Deployment
+
+### 🌐 Frontend (Vercel)
+1. Import repository on [Vercel](https://vercel.com).
+2. Set Root Directory to `frontend`.
+3. Configure Environment Variables: `VITE_API_URL` and `VITE_RAZORPAY_KEY_ID`.
+4. Deploy using build command `npm run build` and output directory `dist`.
+
+### ⚡ Backend (Render)
+1. Create a Web Service on [Render](https://render.com).
+2. Set Root Directory to `backend`.
+3. Build Command: `npm install` | Start Command: `npm start`.
+4. Add all environment variables from `backend/.env`.
+
+### 🛡️ Automated CI/CD
+GitHub Actions workflow (`.github/workflows/ci-cd.yml`) automatically executes on every push to `main`:
+- Installs backend dependencies and executes Jest tests.
+- Installs frontend dependencies and verifies Vite production build.
+
+---
+
+## 11. Mobile App (PWA & Android)
+
+### 📲 Progressive Web App (PWA)
+The app includes a web app manifest (`/public/manifest.json`) and self-managing service worker (`/public/sw.js`). Users on Chrome or Safari can tap **"Add to Home Screen"** to install the mobile PWA.
+
+### 🤖 Android Native APK (Capacitor)
+To build and run the native Android app using Capacitor:
+
+```bash
+cd frontend
+# 1. Build production web bundle
 npm run build
-npx cap sync
+
+# 2. Sync web build to native android container
+npx cap sync android
+
+# 3. Open project in Android Studio
 npx cap open android
 ```
-*(Inside Android Studio, select your emulator or connected device and press **Run ▶**)*
-
-#### 🍏 iOS (Xcode / macOS)
-```bash
-cd frontend
-npm run build
-npx cap add ios   # (First time setup for iOS)
-npx cap open ios
-```
-*(Inside Xcode, select your simulator and press **⌘R** to run)*
-
-#### 🔄 Sync React UI Changes to Native Mobile Apps
-```bash
-cd frontend
-npm run build
-npx cap sync
-```
+*(In Android Studio, connect your physical Android device or launch an emulator and click **Run ▶**).*
 
 ---
 
-## 📁 Project Structure
+## 12. Security Notes
 
-```
-choco-delight/
-├── backend/          # Node.js + Express + MongoDB API
-└── frontend/         # React + Vite + TailwindCSS
-```
-
----
-
-## ⚙️ Setup
-
-### 1. Backend
-
-```bash
-# Navigate to backend
-cd backend
-
-# Install dependencies
-npm install
-
-# Copy env template and fill in your values
-cp .env.example .env
-
-# Start development server
-npm run dev
-```
-
-**Backend runs on:** `http://localhost:5000`
-
-### 2. Seed the Database
-
-After filling in `MONGO_URI` in `.env`:
-
-```bash
-cd backend
-npm run seed
-# OR: node seed.js
-```
-
-This seeds all **16 products** (9 Normal/Heart + 7 Bites) into MongoDB.
-
-### 3. Frontend
-
-```bash
-# Navigate to frontend
-cd frontend
-
-# Install dependencies
-npm install
-
-# Copy env template and fill in your values
-cp .env.example .env
-
-# Start development server
-npm run dev
-```
-
-**Frontend runs on:** `http://localhost:5173`
+- **JWT Authentication**: User sessions use signed JSON Web Tokens stored securely in client storage and sent via `Authorization: Bearer <token>` headers.
+- **Password Protection**: User passwords are encrypted using `bcryptjs` before database persistence.
+- **Protected Admin Routes**: Middleware guards (`/middleware/admin.js`) enforce strict role checking (`role === 'admin'`).
+- **Input Sanitization**: API endpoints utilize `express-validator` and Mongoose schema sanitization.
+- **CORS Protection**: Access is scoped via CORS settings (`cors()` middleware) matching authorized frontend origins.
 
 ---
 
-## 🔑 Environment Variables
+## 13. Contributing
 
-### Backend (`backend/.env`)
-
-```env
-# Server
-PORT=5000
-NODE_ENV=development
-
-# MongoDB Atlas — get from atlas.mongodb.com
-MONGO_URI=mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/choco-delight?retryWrites=true&w=majority
-
-# JWT — use a long, random secret
-JWT_SECRET=your_super_secret_jwt_key_change_this
-JWT_EXPIRES_IN=7d
-
-# Admin Secret — anyone who provides this code during signup gets admin role
-ADMIN_SECRET=chocoAdmin2024
-
-# Cloudinary — get from cloudinary.com/console
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-
-# Razorpay — get from dashboard.razorpay.com
-RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxxxxxx
-RAZORPAY_KEY_SECRET=your_razorpay_key_secret
-
-# Frontend URL (for CORS)
-FRONTEND_URL=http://localhost:5173
-```
-
-### Frontend (`frontend/.env`)
-
-```env
-VITE_API_URL=http://localhost:5000/api
-VITE_RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxxxxxx
-```
-
-> ⚠️ **Never commit `.env` files to Git.** They are already in `.gitignore`.
+Please refer to the following documents before submitting pull requests:
+- [CONTRIBUTING.md](file:///d:/NS_Chaco_Delight/CONTRIBUTING.md) — Code style, commit conventions, and branch strategy.
+- [CHECKLIST.md](file:///d:/NS_Chaco_Delight/CHECKLIST.md) — Pre-deployment verification checklist.
 
 ---
 
-## 🌐 API Endpoints
+## 14. License & Ownership
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/auth/register` | Register user | Public |
-| POST | `/api/auth/login` | Login | Public |
-| GET | `/api/auth/me` | Get profile | 🔒 |
-| PUT | `/api/auth/me` | Update profile | 🔒 |
-| GET | `/api/products` | List products | Public |
-| GET | `/api/products/:id` | Single product | Public |
-| POST | `/api/products` | Create product | 🔒 Admin |
-| PUT | `/api/products/:id` | Update product | 🔒 Admin |
-| DELETE | `/api/products/:id` | Delete product | 🔒 Admin |
-| GET | `/api/products/:id/reviews` | Get reviews | Public |
-| POST | `/api/products/:id/reviews` | Add review | 🔒 |
-| GET | `/api/cart` | Get cart | 🔒 |
-| POST | `/api/cart` | Add to cart | 🔒 |
-| PUT | `/api/cart/:itemId` | Update cart item | 🔒 |
-| DELETE | `/api/cart/:itemId` | Remove item | 🔒 |
-| DELETE | `/api/cart` | Clear cart | 🔒 |
-| POST | `/api/orders` | Create order | 🔒 |
-| GET | `/api/orders` | Get orders | 🔒 |
-| GET | `/api/orders/:id` | Single order | 🔒 |
-| PUT | `/api/orders/:id/status` | Update status | 🔒 Admin |
-| POST | `/api/payment/create-order` | Create Razorpay order | 🔒 |
-| POST | `/api/payment/verify` | Verify payment | 🔒 |
-| GET | `/api/admin/dashboard` | Dashboard stats | 🔒 Admin |
-| GET | `/api/admin/customers` | Customer list | 🔒 Admin |
-
----
-
-## 🔑 Accounts You Need to Create
-
-| Service | What for | URL | Free tier |
-|---------|----------|-----|-----------|
-| **MongoDB Atlas** | Database | [atlas.mongodb.com](https://atlas.mongodb.com) | M0 Cluster (512MB) ✅ |
-| **Cloudinary** | Image hosting | [cloudinary.com](https://cloudinary.com) | 25GB ✅ |
-| **Razorpay** | Payments | [razorpay.com](https://razorpay.com) | Test mode instant ✅ |
-| **Render** | Backend hosting | [render.com](https://render.com) | Free web service ✅ |
-| **Vercel** | Frontend hosting | [vercel.com](https://vercel.com) | Free ✅ |
-
----
-
-## 🚀 Deployment Guide
-
-### Step 1 — MongoDB Atlas
-
-1. Go to [atlas.mongodb.com](https://atlas.mongodb.com) → Create account
-2. Create a **Free M0 cluster**
-3. Create a database user (username + password)
-4. Allow all IP addresses: `Network Access → Add IP → 0.0.0.0/0`
-5. Click **Connect → Drivers** and copy the connection string
-6. Replace `<password>` with your DB user password → that's your `MONGO_URI`
-
-### Step 2 — Cloudinary
-
-1. Go to [cloudinary.com](https://cloudinary.com) → Sign up
-2. On the Dashboard, copy:
-   - **Cloud Name**
-   - **API Key**
-   - **API Secret**
-3. Add these to your backend `.env`
-
-### Step 3 — Razorpay
-
-1. Go to [razorpay.com](https://razorpay.com) → Sign up
-2. Go to **Settings → API Keys → Generate Test Key**
-3. Copy **Key ID** and **Key Secret**
-4. Add to both backend `.env` (both keys) and frontend `.env` (Key ID only)
-5. For **live payments**: Complete Razorpay KYC (quick for small business)
-
-### Step 4 — Deploy Backend to Render
-
-1. Go to [render.com](https://render.com) → Sign up
-2. Click **New → Web Service**
-3. Connect your GitHub repo (push `backend/` to GitHub first)
-4. Settings:
-   - **Root Directory**: `backend`
-   - **Build Command**: `npm install`
-   - **Start Command**: `npm start`
-   - **Node version**: 18+
-5. Add all environment variables from `backend/.env`
-6. Set `FRONTEND_URL` to your Vercel URL (add after step 5)
-7. Deploy → note your Render URL (e.g., `https://choco-delight-api.onrender.com`)
-
-### Step 5 — Deploy Frontend to Vercel
-
-1. Go to [vercel.com](https://vercel.com) → Sign up
-2. Click **New Project** → Import from GitHub
-3. Settings:
-   - **Root Directory**: `frontend`
-   - **Framework**: Vite
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
-4. Add environment variables:
-   - `VITE_API_URL` = `https://your-render-url.onrender.com/api`
-   - `VITE_RAZORPAY_KEY_ID` = your Razorpay Key ID
-5. Deploy → Vercel gives you a `.vercel.app` URL
-
-### Step 6 — Final Steps
-
-1. Update backend `FRONTEND_URL` on Render to your Vercel URL
-2. Run seed script once: on Render, use **Shell** tab → `node seed.js`
-3. Create your admin account: use Register on your site with the `ADMIN_SECRET` code
-4. Upload product images from the Admin Panel
-
----
-
-## 👑 Creating Admin Account
-
-1. Go to `/register` on your site
-2. Click "Have an admin code?" 
-3. Enter the value of `ADMIN_SECRET` from your `.env`
-4. Register — you'll get `role: "admin"` and be redirected to `/admin`
-
----
-
-## 💳 Razorpay Test Mode
-
-Use these test credentials in Razorpay test mode:
-- **UPI**: `success@razorpay`
-- **Card**: `4111 1111 1111 1111` / Expiry: any future date / CVV: any 3 digits
-- **Net Banking**: Select any bank → success
-
-When ready for live, swap test keys with live keys from Razorpay dashboard.
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, Vite, TailwindCSS, Framer Motion |
-| State | React Context (Auth + Cart) |
-| Routing | React Router v6 |
-| HTTP | Axios |
-| Notifications | React Hot Toast |
-| Backend | Node.js, Express.js |
-| Database | MongoDB, Mongoose |
-| Auth | JWT, bcryptjs |
-| Images | Multer + Cloudinary |
-| Payments | Razorpay |
-| Validation | express-validator |
-
----
-
-## 📦 Product Catalog (Seeded)
-
-### Normal / Heart Shape
-| Product | Price |
-|---------|-------|
-| Pistachio Kunafa Chocolate | ₹260 |
-| Nutella Kunafa Chocolate | ₹300 |
-| Oreo Chocolate | ₹120 |
-| Plain Chocolate | ₹100 |
-| Plain White Chocolate | ₹120 |
-| Dark Chocolate | ₹130 |
-| Dry Fruits Chocolate | ₹190 |
-| Almond Chocolate | ₹120 |
-| Gems Chocolate | ₹100 |
-
-### Bites
-| Product | Price |
-|---------|-------|
-| Pistachio Kunafa (Bite) | ₹15 |
-| Plain Chocolate (Bite) | ₹10 |
-| Plain White Chocolate (Bite) | ₹10 |
-| Dark Chocolate (Bite) | ₹10 |
-| Dry Fruits (Bite) | ₹15 |
-| Almond Chocolate (Bite) | ₹10 |
-| Cashew Chocolate (Bite) | ₹10 |
-
----
-
-## 📄 License
-
-Private — All rights reserved. Choco Delight.
+**NS Choco Delight** — All rights reserved.  
+Business Owner: *NS Choco Delight (Tadepalligudem, Andhra Pradesh, India)*.
