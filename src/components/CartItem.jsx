@@ -16,8 +16,8 @@ const CartItem = ({ item }) => {
   const targetId = item._id || item.product?._id || item.product;
 
   return (
-    <div className="flex gap-4 p-4 bg-white rounded-2xl shadow-sm border border-choco-100">
-      <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-choco-50">
+    <div className="flex gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-2xl shadow-sm border border-choco-100 items-center">
+      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden flex-shrink-0 bg-choco-50">
         <img
           src={imageUrl}
           alt={product.name}
@@ -29,11 +29,11 @@ const CartItem = ({ item }) => {
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h3 className="font-display font-semibold text-choco-900 text-sm leading-snug line-clamp-2">
+            <h3 className="font-display font-semibold text-choco-900 text-xs sm:text-sm leading-snug line-clamp-2">
               {product.name}
             </h3>
             {item.shape && (
-              <span className="text-xs text-choco-500 mt-0.5 inline-block">
+              <span className="text-[10px] sm:text-xs text-choco-500 mt-0.5 inline-block">
                 {item.shape === 'Heart' ? '♥ Heart' : '◯ Normal'} Shape
               </span>
             )}
@@ -41,7 +41,7 @@ const CartItem = ({ item }) => {
           <button
             onClick={() => removeItem(targetId)}
             id={`cart-remove-${targetId}`}
-            className="text-choco-400 hover:text-red-500 transition-colors flex-shrink-0"
+            className="text-choco-400 hover:text-red-500 transition-colors p-1 flex-shrink-0 min-w-[36px] min-h-[36px] flex items-center justify-center"
             aria-label="Remove item"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -50,23 +50,23 @@ const CartItem = ({ item }) => {
           </button>
         </div>
 
-        <div className="flex items-center justify-between mt-3">
+        <div className="flex items-center justify-between mt-2 sm:mt-3">
           <div className="flex items-center gap-1 bg-choco-50 rounded-xl p-1">
             <button
               onClick={() => updateItem(targetId, item.quantity - 1)}
               id={`cart-decrease-${targetId}`}
               disabled={item.quantity <= 1}
-              className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-choco-800 font-bold disabled:opacity-40 hover:bg-choco-100 transition-colors shadow-sm text-sm"
+              className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-choco-800 font-bold disabled:opacity-40 hover:bg-choco-100 active:scale-95 transition-all shadow-sm text-sm"
               aria-label="Decrease quantity"
             >
               −
             </button>
-            <span className="w-8 text-center text-sm font-semibold text-choco-900">{item.quantity}</span>
+            <span className="w-7 text-center text-xs sm:text-sm font-semibold text-choco-900">{item.quantity}</span>
             <button
               onClick={() => updateItem(targetId, item.quantity + 1)}
               id={`cart-increase-${targetId}`}
               disabled={item.quantity >= product.stock}
-              className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-choco-800 font-bold disabled:opacity-40 hover:bg-choco-100 transition-colors shadow-sm text-sm"
+              className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-choco-800 font-bold disabled:opacity-40 hover:bg-choco-100 active:scale-95 transition-all shadow-sm text-sm"
               aria-label="Increase quantity"
             >
               +
@@ -74,8 +74,8 @@ const CartItem = ({ item }) => {
           </div>
 
           <div className="text-right">
-            <p className="text-xs text-choco-500">₹{product.price} × {item.quantity}</p>
-            <p className="font-bold text-choco-900 font-display">₹{subtotal}</p>
+            <p className="text-[10px] sm:text-xs text-choco-500">₹{product.price} × {item.quantity}</p>
+            <p className="font-bold text-choco-900 text-sm sm:text-base font-display">₹{subtotal}</p>
           </div>
         </div>
       </div>
