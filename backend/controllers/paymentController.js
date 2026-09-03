@@ -1,10 +1,11 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+const getRazorpayInstance = () => {
+  const key_id = process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder';
+  const key_secret = process.env.RAZORPAY_KEY_SECRET || 'placeholder_secret';
+  return new Razorpay({ key_id, key_secret });
+};
 
 // @desc    Create Razorpay order
 // @route   POST /api/payment/create-order
@@ -25,6 +26,7 @@ const createRazorpayOrder = async (req, res) => {
     },
   };
 
+  const razorpay = getRazorpayInstance();
   const order = await razorpay.orders.create(options);
 
   res.json({
