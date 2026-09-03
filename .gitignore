@@ -11,6 +11,8 @@ backend/.env
 frontend/.env
 
 # Build outputs
+.next/
+out/
 frontend/dist/
 frontend/build/
 
