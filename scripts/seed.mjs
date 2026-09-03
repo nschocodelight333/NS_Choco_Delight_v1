@@ -1,10 +1,40 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
-import Product from '@/models/Product';
-import { getAuthUser } from '@/lib/auth';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const INITIAL_PRODUCTS = [
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '../.env.local') });
+
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
+
+if (!MONGODB_URI) {
+  console.error('❌ MONGODB_URI is not defined in .env.local');
+  process.exit(1);
+}
+
+const productSchema = new mongoose.Schema(
+  {
+    name: String,
+    description: String,
+    category: { type: String, enum: ['Normal Shape or Heart', 'Bites'] },
+    shapeOptions: [String],
+    price: Number,
+    images: [String],
+    stock: Number,
+    ratingAverage: { type: Number, default: 5 },
+    numReviews: { type: Number, default: 12 },
+    isFeatured: Boolean,
+    isAvailable: { type: Boolean, default: true },
+  },
+  { timestamps: true }
+);
+
+const Product = mongoose.models.Product || mongoose.model('Product', productSchema);
+
+const sampleProducts = [
   {
     name: 'Pistachio Kunafa Heart Chocolate',
     description: 'Crispy golden roasted kunafa pastry combined with rich pistachio butter & wrapped in premium Belgian dark milk chocolate.',
@@ -85,87 +115,29 @@ const INITIAL_PRODUCTS = [
   },
 ];
 
-export async function GET(req) {
+async function seedDB() {
   try {
-    await connectDB();
-    const { searchParams } = new URL(req.url);
+    console.log('⏳ Connecting to MongoDB Atlas database...');
+    await mongoose.connect(MONGODB_URI);
+    console.log('✅ Connected successfully!');
 
-    const category = searchParams.get('category');
-    const featured = searchParams.get('featured');
-    const search = searchParams.get('search');
-    const sort = searchParams.get('sort');
+    const existing = await Product.countDocuments();
+    console.log(`Current product count: ${existing}`);
 
-    // Auto-seed if database is empty
-    const totalCount = await Product.countDocuments();
-    if (totalCount === 0) {
-      await Product.insertMany(INITIAL_PRODUCTS);
-    }
-
-    let query = { isAvailable: true };
-
-    if (category) {
-      query.category = category;
-    }
-
-    if (featured === 'true') {
-      query.isFeatured = true;
-    }
-
-    if (search) {
-      query.$text = { $search: search };
-    }
-
-    let productQuery = Product.find(query);
-
-    if (sort === 'price-low' || sort === 'price_asc') {
-      productQuery = productQuery.sort({ price: 1 });
-    } else if (sort === 'price-high' || sort === 'price_desc') {
-      productQuery = productQuery.sort({ price: -1 });
-    } else if (sort === 'rating') {
-      productQuery = productQuery.sort({ ratingAverage: -1 });
+    if (existing === 0) {
+      await Product.insertMany(sampleProducts);
+      console.log('🎉 Seeded 6 handcrafted chocolate products into database!');
     } else {
-      productQuery = productQuery.sort({ createdAt: -1 });
+      console.log('ℹ️ Products already exist. Adding sample products if needed...');
+      await Product.insertMany(sampleProducts);
+      console.log('🎉 Added 6 sample products!');
     }
 
-    const products = await productQuery;
-
-    return NextResponse.json({
-      success: true,
-      count: products.length,
-      products,
-    });
-  } catch (error) {
-    console.error('Fetch products error:', error);
-    return NextResponse.json(
-      { success: false, message: error.message || 'Server error', products: [] },
-      { status: 500 }
-    );
+    process.exit(0);
+  } catch (err) {
+    console.error('❌ Seeding error:', err);
+    process.exit(1);
   }
 }
 
-export async function POST(req) {
-  try {
-    const user = await getAuthUser(req);
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json(
-        { success: false, message: 'Not authorized as admin' },
-        { status: 403 }
-      );
-    }
-
-    await connectDB();
-    const body = await req.json();
-
-    const product = await Product.create(body);
-
-    return NextResponse.json({
-      success: true,
-      product,
-    }, { status: 201 });
-  } catch (error) {
-    return NextResponse.json(
-      { success: false, message: error.message || 'Server error' },
-      { status: 500 }
-    );
-  }
-}
+seedDB();
