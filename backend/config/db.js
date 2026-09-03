@@ -59,7 +59,7 @@ const connectDB = async () => {
 
   // ── Development / Production Environment ───────────────────────────────────
   let uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/choco-delight';
-  uri = uri.replace(/<([^>]+)>/g, '$1').replace(/[<>]/g, '');
+  uri = uri.replace(/<([^>]+)>/g, '$1').replace(/[<>]/g, '').trim();
 
   // 1. Try Cloud Atlas (or configured URI)
   try {
