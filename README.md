@@ -1,18 +1,18 @@
 # 🍫 NS Choco Delight — Handcrafted Chocolates E-Commerce Platform
 
 > **Made with Heart, Meant to Celebrate.**  
-> *Official Full-Stack Web & Mobile E-Commerce Ecosystem for NS Choco Delight — Tadepalligudem, Andhra Pradesh, India.*
+> *Official Full-Stack Next.js 14 E-Commerce Platform for NS Choco Delight — Tadepalligudem, Andhra Pradesh, India.*
 
 ---
 
-[![CI/CD Safety Pipeline](https://github.com/skshafiulla/NS_Chaco_Delight/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/skshafiulla/NS_Chaco_Delight/actions/workflows/ci-cd.yml)
+[![Framework](https://img.shields.io/badge/Next.js-14_App_Router-black.svg)](https://nextjs.org/)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
-[![React Version](https://img.shields.io/badge/react-18.2.0-blue.svg)](https://react.dev/)
-[![Express Version](https://img.shields.io/badge/express-4.18.2-lightgrey.svg)](https://expressjs.com/)
-[![MongoDB Mongoose](https://img.shields.io/badge/mongoose-8.1.1-green.svg)](https://mongoosejs.com/)
-[![Capacitor Native](https://img.shields.io/badge/capacitor-8.5.0-blueviolet.svg)](https://capacitorjs.com/)
+[![Styling](https://img.shields.io/badge/TailwindCSS-v3.4-blue.svg)](https://tailwindcss.com/)
+[![Database](https://img.shields.io/badge/MongoDB-Atlas_Cloud-green.svg)](https://mongodb.com/)
+[![Deployment](https://img.shields.io/badge/Deployment-Vercel-black.svg)](https://vercel.com/)
 
 ---
+
 
 ## 📋 Table of Contents
 1. [Project Overview](#1-project-overview)
