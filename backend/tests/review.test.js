@@ -3,17 +3,25 @@ const app = require('../server');
 const Product = require('../models/Product');
 const Review = require('../models/Review');
 const User = require('../models/User');
+const connectDB = require('../config/db');
 
 jest.setTimeout(20000);
 
 describe('Review - Product Link & Rating Recalculation Safeguard', () => {
   let testProduct;
   let testUser;
+  let testUser2;
 
   beforeAll(async () => {
+    await connectDB();
     testUser = await User.create({
-      name: 'Review Tester',
-      email: `review_tester_${Date.now()}@example.com`,
+      name: 'Review Tester 1',
+      email: `review_tester1_${Date.now()}@example.com`,
+      password: 'Password123!',
+    });
+    testUser2 = await User.create({
+      name: 'Review Tester 2',
+      email: `review_tester2_${Date.now()}@example.com`,
       password: 'Password123!',
     });
     testProduct = await Product.create({
@@ -28,6 +36,7 @@ describe('Review - Product Link & Rating Recalculation Safeguard', () => {
   afterAll(async () => {
     if (testProduct) await Product.findByIdAndDelete(testProduct._id);
     if (testUser) await User.findByIdAndDelete(testUser._id);
+    if (testUser2) await User.findByIdAndDelete(testUser2._id);
     await Review.deleteMany({ product: testProduct?._id });
     await mongoose.connection.close();
   }, 20000);
@@ -41,7 +50,7 @@ describe('Review - Product Link & Rating Recalculation Safeguard', () => {
     });
 
     await Review.create({
-      user: testUser._id,
+      user: testUser2._id,
       product: testProduct._id,
       rating: 4,
       comment: 'Very good flavor!',

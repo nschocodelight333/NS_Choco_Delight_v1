@@ -7,20 +7,11 @@ let mongoMemoryServer = null;
 
 const createFreshMongoMemoryServer = async () => {
   const { MongoMemoryServer } = require('mongodb-memory-server');
-  try {
-    return await MongoMemoryServer.create({
-      binary: {
-        version: '6.0.14',
-      },
-    });
-  } catch (err) {
-    console.warn('⚠️ Standard MongoMemoryServer launch failed, attempting fallback version 5.0.28...', err.message);
-    return await MongoMemoryServer.create({
-      binary: {
-        version: '5.0.28',
-      },
-    });
-  }
+  return await MongoMemoryServer.create({
+    binary: {
+      version: '6.0.5',
+    },
+  });
 };
 
 const autoSeedDatabase = async () => {
@@ -47,12 +38,17 @@ const connectDB = async () => {
         mongoMemoryServer = await createFreshMongoMemoryServer();
       }
       const memUri = mongoMemoryServer.getUri();
-      const memConn = await mongoose.connect(memUri);
-      console.log(`✅ Test In-Memory MongoDB Connected: ${memConn.connection.host}`);
-      await autoSeedDatabase();
+      if (mongoose.connection.readyState === 0) {
+        const memConn = await mongoose.connect(memUri);
+        console.log(`✅ Test In-Memory MongoDB Connected: ${memConn.connection.host}`);
+        await autoSeedDatabase();
+      }
       return;
     } catch (err) {
       console.error('⚠️ Test MongoMemoryServer failed:', err.message);
+      try {
+        await mongoose.disconnect();
+      } catch (e) {}
       mongoMemoryServer = await createFreshMongoMemoryServer();
       const memUri = mongoMemoryServer.getUri();
       await mongoose.connect(memUri);
