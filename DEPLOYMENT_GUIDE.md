@@ -4,6 +4,10 @@ This repository is configured so **NS Choco Delight** (Vite React Frontend + Exp
 
 ---
 
+> *Last verified & updated by Komesh Bathula for production Vercel & Render deployment.*
+
+---
+
 ## ⚡ Option 1: 100% Vercel Unified Single-Project Deployment (Recommended)
 
 With this setup, Vercel hosts both your frontend UI and your backend Express serverless functions under a single URL!
