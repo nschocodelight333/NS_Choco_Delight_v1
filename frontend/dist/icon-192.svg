@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="128" fill="#3E2723"/>
-  <circle cx="256" cy="256" r="180" fill="#C9A063" opacity="0.25"/>
-  <text x="256" y="325" font-size="250" text-anchor="middle">🍫</text>
-</svg>
