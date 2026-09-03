@@ -105,7 +105,7 @@ const connectDB = async () => {
     }
   }
 
-  if (process.env.NODE_ENV !== 'test') {
+  if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL && !process.env.NOW_REGION) {
     process.exit(1);
   }
 };
