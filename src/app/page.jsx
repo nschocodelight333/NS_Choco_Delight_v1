@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { buildWhatsAppUrl } from '@/utils/whatsapp';
-import { getImageUrl } from '@/utils/imageUrl';
 import { getProducts } from '@/api/products';
 import { getPublishedCampaigns } from '@/api/campaigns';
 import ProductCard from '@/components/ProductCard';
@@ -31,7 +30,6 @@ const categories = [
 export default function Home() {
   const { user } = useAuth();
   const [featuredProducts, setFeaturedProducts] = useState([]);
-  const [activeCampaigns, setActiveCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,71 +37,67 @@ export default function Home() {
       .then((res) => setFeaturedProducts(res.data.products || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-
-    getPublishedCampaigns()
-      .then((res) => setActiveCampaigns(res.data.campaigns || []))
-      .catch(() => {});
   }, []);
 
   return (
     <div>
       {/* Hero Banner */}
-      <section className="relative min-h-[85vh] flex items-center overflow-hidden bg-choco-gradient">
+      <section className="relative min-h-[75vh] sm:min-h-[85vh] flex items-center overflow-hidden bg-choco-gradient py-12 sm:py-16">
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-choco-700/40 blur-3xl" />
-          <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-gold-500/20 blur-3xl" />
+          <div className="absolute -top-32 -right-32 w-64 sm:w-96 h-64 sm:h-96 rounded-full bg-choco-700/40 blur-3xl" />
+          <div className="absolute -bottom-24 -left-24 w-60 sm:w-80 h-60 sm:h-80 rounded-full bg-gold-500/20 blur-3xl" />
         </div>
 
-        <div className="page-container relative z-10 py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="page-container relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             <motion.div
-              initial={{ opacity: 0, x: -40 }}
+              initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.7 }}
+              transition={{ duration: 0.6 }}
             >
-              <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-gold-500/20 border border-gold-500/30 rounded-full text-gold-400 text-sm font-medium mb-6">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gold-500/20 border border-gold-500/30 rounded-full text-gold-400 text-xs sm:text-sm font-medium mb-4 sm:mb-6">
                 🍫 Handcrafted with Love
               </span>
-              <h1 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold text-cream leading-tight mb-6">
+              <h1 className="font-display text-3xl sm:text-5xl lg:text-7xl font-bold text-cream leading-tight mb-4 sm:mb-6">
                 Made with Heart,
                 <br />
                 <span className="text-gold-400">Meant to</span>
                 <br />
                 Be Shared.
               </h1>
-              <p className="text-choco-200 text-lg sm:text-xl max-w-xl mb-8 leading-relaxed font-light">
+              <p className="text-choco-200 text-sm sm:text-lg max-w-xl mb-6 sm:mb-8 leading-relaxed font-light">
                 Discover exquisite homemade chocolates for every celebration. Customized designs, gourmet flavors, and unforgettable moments.
               </p>
 
-              <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
                 <Link
                   href="/products"
                   id="hero-shop-now-btn"
-                  className="btn-gold py-4 px-8 text-base font-bold shadow-gold hover:scale-105 transition-transform"
+                  className="btn-gold py-3.5 px-6 sm:px-8 text-sm sm:text-base font-bold shadow-gold text-center hover:scale-105 transition-transform"
                 >
                   Shop Catalog →
                 </Link>
                 <Link
                   href="/customize"
                   id="hero-customize-btn"
-                  className="btn-secondary py-4 px-8 text-base font-semibold border-white/20 text-cream hover:bg-white/10"
+                  className="btn-secondary py-3.5 px-6 sm:px-8 text-sm sm:text-base font-semibold border-white/20 text-cream text-center hover:bg-white/10"
                 >
                   Custom Request ✨
                 </Link>
               </div>
 
-              <div className="grid grid-cols-3 gap-6 mt-12 pt-8 border-t border-choco-700/50">
+              <div className="grid grid-cols-3 gap-4 sm:gap-6 mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-choco-700/50">
                 <div>
-                  <p className="font-display text-2xl sm:text-3xl font-bold text-gold-400">100%</p>
-                  <p className="text-xs text-choco-300">Homemade & Fresh</p>
+                  <p className="font-display text-xl sm:text-3xl font-bold text-gold-400">100%</p>
+                  <p className="text-[10px] sm:text-xs text-choco-300">Homemade & Fresh</p>
                 </div>
                 <div>
-                  <p className="font-display text-2xl sm:text-3xl font-bold text-gold-400">2+</p>
-                  <p className="text-xs text-choco-300">Shape Categories</p>
+                  <p className="font-display text-xl sm:text-3xl font-bold text-gold-400">2+</p>
+                  <p className="text-[10px] sm:text-xs text-choco-300">Shape Categories</p>
                 </div>
                 <div>
-                  <p className="font-display text-2xl sm:text-3xl font-bold text-gold-400">Custom</p>
-                  <p className="text-xs text-choco-300">Orders Welcome</p>
+                  <p className="font-display text-xl sm:text-3xl font-bold text-gold-400">Custom</p>
+                  <p className="text-[10px] sm:text-xs text-choco-300">Orders Welcome</p>
                 </div>
               </div>
             </motion.div>
@@ -111,7 +105,7 @@ export default function Home() {
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
               className="relative hidden lg:block"
             >
               <div className="relative mx-auto max-w-md">
@@ -158,13 +152,13 @@ export default function Home() {
       </section>
 
       {/* Category Tiles */}
-      <section className="py-20 bg-cream">
+      <section className="py-12 sm:py-20 bg-cream">
         <div className="page-container">
-          <div className="text-center mb-12">
-            <h2 className="section-title">Shop by Category</h2>
-            <p className="section-subtitle">Two wonderful collections to choose from</p>
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-2xl sm:text-4xl font-display font-bold text-choco-900">Shop by Category</h2>
+            <p className="text-choco-600 text-xs sm:text-lg mt-1">Two wonderful collections to choose from</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-3xl mx-auto">
             {categories.map((cat, i) => (
               <motion.div
                 key={cat.title}
@@ -176,12 +170,12 @@ export default function Home() {
                 <Link
                   href={`/products?category=${encodeURIComponent(cat.query)}`}
                   id={`category-${cat.query.replace(/\s+/g, '-').toLowerCase()}`}
-                  className={`block bg-gradient-to-br ${cat.bg} rounded-3xl p-8 text-center hover:shadow-choco-lg transition-all duration-300 hover:-translate-y-1 group`}
+                  className={`block bg-gradient-to-br ${cat.bg} rounded-3xl p-6 sm:p-8 text-center hover:shadow-choco-lg transition-all duration-300 hover:-translate-y-1 group`}
                 >
-                  <span className="text-6xl mb-4 block group-hover:scale-110 transition-transform duration-300">{cat.emoji}</span>
-                  <h3 className="font-display text-2xl font-bold text-cream mb-2">{cat.title}</h3>
-                  <p className="text-choco-200 text-sm">{cat.description}</p>
-                  <span className="inline-block mt-4 text-gold-400 text-sm font-medium group-hover:translate-x-1 transition-transform">
+                  <span className="text-4xl sm:text-6xl mb-3 sm:mb-4 block group-hover:scale-110 transition-transform duration-300">{cat.emoji}</span>
+                  <h3 className="font-display text-xl sm:text-2xl font-bold text-cream mb-1 sm:mb-2">{cat.title}</h3>
+                  <p className="text-choco-200 text-xs sm:text-sm">{cat.description}</p>
+                  <span className="inline-block mt-3 sm:mt-4 text-gold-400 text-xs sm:text-sm font-medium group-hover:translate-x-1 transition-transform">
                     Explore →
                   </span>
                 </Link>
@@ -192,39 +186,38 @@ export default function Home() {
       </section>
 
       {/* Featured Products */}
-      <section className="py-20 bg-white">
+      <section className="py-12 sm:py-20 bg-white">
         <div className="page-container">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-12 gap-4">
+          <div className="flex flex-row items-center justify-between mb-8 sm:mb-12 gap-2">
             <div>
-              <h2 className="section-title text-left">Featured Creations</h2>
-              <p className="section-subtitle text-left">Our most popular handcrafted chocolates</p>
+              <h2 className="text-xl sm:text-4xl font-display font-bold text-choco-900">Featured Creations</h2>
+              <p className="text-choco-600 text-xs sm:text-base mt-0.5">Popular handcrafted chocolates</p>
             </div>
             <Link
               href="/products"
               id="view-all-products-btn"
-              className="text-choco-800 font-semibold hover:text-choco-600 flex items-center gap-1 text-sm group"
+              className="text-choco-800 font-semibold hover:text-choco-600 flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap"
             >
-              View All Products
-              <span className="group-hover:translate-x-1 transition-transform">→</span>
+              View All <span className="hidden sm:inline">Products</span> →
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {loading
-              ? Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
+              ? Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)
               : featuredProducts.map((p) => <ProductCard key={p._id} product={p} />)}
           </div>
         </div>
       </section>
 
       {/* WhatsApp CTA */}
-      <section className="py-16 bg-choco-gradient text-cream relative overflow-hidden">
+      <section className="py-12 sm:py-16 bg-choco-gradient text-cream relative overflow-hidden">
         <div className="page-container text-center relative z-10">
-          <span className="text-5xl mb-4 block">💬</span>
-          <h2 className="font-display text-3xl sm:text-4xl font-bold mb-4">
+          <span className="text-4xl sm:text-5xl mb-3 sm:mb-4 block">💬</span>
+          <h2 className="font-display text-2xl sm:text-4xl font-bold mb-3 sm:mb-4">
             Need a Custom Chocolate Box?
           </h2>
-          <p className="text-choco-200 max-w-xl mx-auto mb-8 text-base sm:text-lg font-light">
+          <p className="text-choco-200 max-w-xl mx-auto mb-6 sm:mb-8 text-xs sm:text-lg font-light">
             Chat with us directly on WhatsApp for bulk orders, event favors, or special customized designs.
           </p>
           <a
@@ -232,7 +225,7 @@ export default function Home() {
             target="_blank"
             rel="noopener noreferrer"
             id="whatsapp-cta-btn"
-            className="btn-gold py-4 px-10 text-base font-bold inline-flex items-center gap-3 shadow-gold hover:scale-105 transition-transform"
+            className="btn-gold py-3.5 px-6 sm:px-10 text-xs sm:text-base font-bold inline-flex items-center gap-2 sm:gap-3 shadow-gold hover:scale-105 transition-transform"
           >
             <span>💬 Chat on WhatsApp Now</span>
           </a>
