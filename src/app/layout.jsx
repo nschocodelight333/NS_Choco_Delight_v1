@@ -3,6 +3,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import MobileBottomNav from '@/components/MobileBottomNav';
 import { Toaster } from 'react-hot-toast';
 
 export const metadata = {
@@ -26,8 +27,9 @@ export default function RootLayout({ children }) {
           <CartProvider>
             <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
             <Navbar />
-            <main className="flex-grow">{children}</main>
+            <main className="flex-grow pb-16 md:pb-0">{children}</main>
             <Footer />
+            <MobileBottomNav />
           </CartProvider>
         </AuthProvider>
       </body>
