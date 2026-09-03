@@ -6,7 +6,6 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { buildWhatsAppUrl } from '@/utils/whatsapp';
 import { getProducts } from '@/api/products';
-import { getPublishedCampaigns } from '@/api/campaigns';
 import ProductCard from '@/components/ProductCard';
 import { ProductCardSkeleton } from '@/components/SkeletonLoader';
 
@@ -102,45 +101,25 @@ export default function Home() {
               </div>
             </motion.div>
 
+            {/* Official Brand Hero Poster */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="relative hidden lg:block"
+              className="relative"
             >
-              <div className="relative mx-auto max-w-md">
-                <div className="bg-choco-800/80 backdrop-blur-xl border border-choco-700/60 rounded-3xl p-8 shadow-choco-lg">
-                  <div className="flex items-center justify-between mb-6">
-                    <span className="text-3xl">🎁</span>
-                    <span className="bg-gold-500/20 text-gold-400 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                      Best Sellers
-                    </span>
-                  </div>
-
-                  <h3 className="font-display text-2xl font-bold text-cream mb-2">
-                    Heart Shape Chocolates
-                  </h3>
-                  <p className="text-choco-300 text-sm mb-6">
-                    Rich, smooth, handcrafted chocolates made to celebrate your special moments.
-                  </p>
-
-                  <div className="space-y-3 mb-6">
-                    <div className="flex items-center gap-3 text-sm text-choco-200">
-                      <span className="text-gold-400">✓</span> Custom name printing
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-choco-200">
-                      <span className="text-gold-400">✓</span> Gift wrapping included
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-choco-200">
-                      <span className="text-gold-400">✓</span> Freshly made on order
-                    </div>
-                  </div>
-
+              <div className="relative mx-auto max-w-lg rounded-3xl overflow-hidden shadow-2xl border-2 border-gold-500/40 group hover:border-gold-400 transition-all">
+                <img
+                  src="/images/ns-choco-hero-poster.png"
+                  alt="NS Choco Delight Official Poster"
+                  className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-choco-950/80 via-transparent to-transparent flex items-end p-6">
                   <a
-                    href={buildWhatsAppUrl('Hi! I would like to order Heart Shape Chocolates.')}
+                    href={buildWhatsAppUrl('I would like to place an order for Heart Shape Chocolates.')}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="btn-gold w-full text-center py-3 text-sm font-bold flex items-center justify-center gap-2 shadow-xs"
+                    className="btn-gold w-full text-center py-3 text-sm font-bold flex items-center justify-center gap-2 shadow-gold"
                   >
                     <span>💬 Order via WhatsApp</span>
                   </a>
@@ -221,7 +200,7 @@ export default function Home() {
             Chat with us directly on WhatsApp for bulk orders, event favors, or special customized designs.
           </p>
           <a
-            href={buildWhatsAppUrl("Hi! I'd like to ask about a custom chocolate order.")}
+            href={buildWhatsAppUrl("I would like to ask about a custom chocolate order.")}
             target="_blank"
             rel="noopener noreferrer"
             id="whatsapp-cta-btn"
