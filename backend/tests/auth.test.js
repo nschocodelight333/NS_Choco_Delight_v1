@@ -18,6 +18,8 @@ describe('Auth & User Registration / Login Flow', () => {
 
   beforeAll(async () => {
     await connectDB();
+    const { seedAdminUser } = require('../seed-admin');
+    await seedAdminUser();
   });
 
   afterAll(async () => {

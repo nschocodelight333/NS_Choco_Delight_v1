@@ -1,10 +1,12 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const app = require('../server');
+const connectDB = require('../config/db');
 const Product = require('../models/Product');
 
 describe('Product Controller & API Safeguards', () => {
   beforeAll(async () => {
+    await connectDB();
     // Ensure test product exists
     await Product.create({
       name: 'Test Dark Chocolate',

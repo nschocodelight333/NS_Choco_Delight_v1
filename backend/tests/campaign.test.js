@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const app = require('../server');
 const Campaign = require('../models/Campaign');
 const Product = require('../models/Product');
+const connectDB = require('../config/db');
 
 jest.setTimeout(30000);
 
@@ -18,6 +19,7 @@ describe('Special Occasion Campaign Pages - Status Published Sole Gate', () => {
   futureDate.setDate(futureDate.getDate() + 10); // 10 days in future
 
   beforeAll(async () => {
+    await connectDB();
     testProduct = await Product.create({
       name: 'Campaign Test Chocolate',
       description: 'Test chocolate for campaign sections',
