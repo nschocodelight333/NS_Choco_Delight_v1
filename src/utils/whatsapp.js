@@ -1,32 +1,57 @@
-export const buildWhatsAppUrl = (customerName = '', customMessage = '') => {
-  const whatsappNumber = '918185920511';
+export const getWhatsAppNumber = () => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('store_whatsapp_number');
+    if (saved && saved.trim()) return saved.trim();
+  }
+  return process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '918185920511';
+};
 
-  let name = customerName;
+export const setWhatsAppNumber = (number) => {
+  if (typeof window !== 'undefined' && number) {
+    localStorage.setItem('store_whatsapp_number', number.replace(/\D/g, ''));
+  }
+};
 
+export const buildWhatsAppUrl = (param1 = '', param2 = '') => {
+  const whatsappNumber = getWhatsAppNumber();
+
+  let name = '';
+  let message = '';
+
+  if (typeof param1 === 'object' && param1 !== null) {
+    name = param1.name || '';
+    message = param1.message || '';
+  } else if (param1 && !param2 && (param1.includes(' ') || param1.length > 20 || param1.toLowerCase().includes('order') || param1.toLowerCase().includes('hi'))) {
+    message = param1;
+  } else {
+    name = param1;
+    message = param2;
+  }
+
+  // Get user name from localStorage if available
   if (!name || name === 'Customer') {
     try {
       if (typeof window !== 'undefined') {
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
           const parsed = JSON.parse(storedUser);
-          if (parsed?.name) {
-            name = parsed.name;
-          }
+          if (parsed?.name) name = parsed.name;
         }
       }
     } catch (e) {}
   }
 
-  const finalName = name && name.trim() ? name.trim() : 'Customer';
+  const finalName = name && name.trim() ? name.trim() : '';
+  const greeting = finalName
+    ? `Hello NS Choco Delight! 🍫\nMy name is *${finalName}*.`
+    : `Hello NS Choco Delight! 🍫`;
 
-  if (customMessage && customMessage.trim()) {
-    const text = encodeURIComponent(
-      `Hi NS Choco Delight! 👋 I'm ${finalName}, and I'd like to connect with you.\n\n${customMessage.trim()}`
-    );
-    return `https://wa.me/${whatsappNumber}?text=${text}`;
+  if (message && message.trim()) {
+    const cleanMsg = message.trim().replace(/^Hi!\s*/i, '');
+    const text = `${greeting}\n\nI would like to connect regarding:\n*${cleanMsg}*\n\nPlease let me know the details and availability. Thank you! 🙏`;
+    return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
   }
 
-  const menuText = `Hi NS Choco Delight! 👋 I'm ${finalName}, and I'd like to connect with you. Please choose an option:\n\n1. I need some inquiry ❓\n2. I want to order 🛒\n3. I need an update 📦\n4. Issue regarding my order ⚠️\n\nReply with the number that fits your need! 😊`;
-
-  return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(menuText)}`;
+  const defaultText = `${greeting}\n\nI would like to place an order or inquire about your handcrafted chocolates.\n\nPlease share your current catalog and availability. Thank you! ✨`;
+  return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(defaultText)}`;
 };
