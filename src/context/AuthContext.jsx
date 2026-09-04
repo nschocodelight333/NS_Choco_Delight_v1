@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
-import { loginUser, registerUser, getMe } from '@/api/auth';
+import { loginUser, registerUser, getMe, updateMe } from '@/api/auth';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
@@ -74,8 +74,17 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
+  const updateUserProfile = async (data) => {
+    const res = await updateMe(data);
+    if (res.data?.user) {
+      setUser(res.data.user);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      return res.data.user;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

@@ -4,18 +4,24 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { getPublishedCampaigns } from '@/api/campaigns';
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUserProfile } = useAuth();
   const { cartCount } = useCart();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [hasOccasions, setHasOccasions] = useState(false);
+
+  // User Profile Modal state
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileForm, setProfileForm] = useState({ name: '', phone: '' });
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     getPublishedCampaigns()
@@ -27,6 +33,32 @@ const Navbar = () => {
     logout();
     setUserMenuOpen(false);
     router.push('/');
+  };
+
+  const handleOpenProfileModal = () => {
+    setProfileForm({
+      name: user?.name || '',
+      phone: user?.phone || '',
+    });
+    setUserMenuOpen(false);
+    setShowProfileModal(true);
+  };
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    setSavingProfile(true);
+    try {
+      await updateUserProfile({
+        name: profileForm.name.trim(),
+        phone: profileForm.phone.trim(),
+      });
+      toast.success('Mobile number and profile updated successfully! 📱');
+      setShowProfileModal(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update profile details.');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const navLinks = [
@@ -115,6 +147,7 @@ const Navbar = () => {
                       <div className="px-4 py-2 border-b border-choco-100">
                         <p className="font-bold text-choco-900 text-sm truncate">{user.name}</p>
                         <p className="text-choco-500 text-xs truncate">{user.email}</p>
+                        {user.phone && <p className="text-choco-400 text-[11px] truncate">📱 {user.phone}</p>}
                         {user.role === 'admin' && (
                           <span className="inline-block mt-1 text-[10px] uppercase tracking-wider font-extrabold bg-gold-100 text-gold-800 px-2 py-0.5 rounded-md">
                             👑 Admin
@@ -124,13 +157,20 @@ const Navbar = () => {
 
                       {user.role === 'admin' && (
                         <Link
-                          href="/admin"
+                          href="/admin/dashboard"
                           onClick={() => setUserMenuOpen(false)}
                           className="flex items-center gap-2 px-4 py-2 text-sm text-choco-800 hover:bg-choco-50 font-semibold"
                         >
                           ⚙️ Admin Dashboard
                         </Link>
                       )}
+
+                      <button
+                        onClick={handleOpenProfileModal}
+                        className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-choco-700 hover:bg-choco-50"
+                      >
+                        👤 My Profile & Phone
+                      </button>
 
                       <Link
                         href="/orders"
@@ -151,7 +191,7 @@ const Navbar = () => {
                       <button
                         onClick={handleLogout}
                         id="logout-btn"
-                        className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium"
+                        className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium border-t border-choco-100 mt-1 pt-2"
                       >
                         🚪 Sign Out
                       </button>
@@ -228,6 +268,78 @@ const Navbar = () => {
       {userMenuOpen && (
         <div className="fixed inset-0 z-[-1]" onClick={() => setUserMenuOpen(false)} />
       )}
+
+      {/* EDIT PROFILE MODAL */}
+      <AnimatePresence>
+        {showProfileModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4"
+            >
+              <div className="flex justify-between items-center border-b border-choco-100 pb-3">
+                <h3 className="font-display text-xl font-bold text-choco-900">
+                  👤 Edit Profile Details
+                </h3>
+                <button
+                  onClick={() => setShowProfileModal(false)}
+                  className="text-choco-400 hover:text-choco-700 text-xl font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveProfile} className="space-y-4 text-sm">
+                <div>
+                  <label className="label">Full Name *</label>
+                  <input
+                    type="text"
+                    value={profileForm.name}
+                    onChange={(e) => setProfileForm((p) => ({ ...p, name: e.target.value }))}
+                    className="input-field"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="label">Mobile Phone Number *</label>
+                  <input
+                    type="text"
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm((p) => ({ ...p, phone: e.target.value }))}
+                    placeholder="e.g. 9876543210"
+                    maxLength={15}
+                    className="input-field font-mono"
+                    required
+                  />
+                  <p className="text-xs text-choco-400 mt-1">
+                    Your contact number for order updates and delivery communications.
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-choco-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowProfileModal(false)}
+                    className="btn-secondary w-full py-3 text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingProfile}
+                    className="btn-gold w-full py-3 text-sm font-bold shadow-gold"
+                  >
+                    {savingProfile ? 'Updating...' : '💾 Update Mobile Number'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </header>
   );
 };

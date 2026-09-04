@@ -13,7 +13,7 @@ const FREE_DELIVERY_THRESHOLD = 500;
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, updateUserProfile } = useAuth();
   const { cart, cartTotal } = useCart();
   const items = cart?.items || [];
 
@@ -128,6 +128,11 @@ export default function CheckoutPage() {
             isTakeaway: true,
           }
         : address;
+
+      // Update user mobile number in profile if provided
+      if (address.phone && address.phone !== user?.phone && updateUserProfile) {
+        updateUserProfile({ phone: address.phone }).catch(() => {});
+      }
 
       const newOrder = await createOrder({
         deliveryAddress: finalAddress,

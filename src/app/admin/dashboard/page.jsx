@@ -2,13 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/context/AuthContext';
 import { getDashboardStats } from '@/api/admin';
-import { getWhatsAppNumber, setWhatsAppNumber } from '@/utils/whatsapp';
+import { getWhatsAppNumber, setWhatsAppNumber, fetchStoreWhatsAppNumber } from '@/utils/whatsapp';
 import api from '@/api/axios';
 
 export default function AdminDashboardPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
   const [activeTab, setActiveTab] = useState('overview'); // overview | products | whatsapp | orders
   const [stats, setStats] = useState(null);
   const [products, setProducts] = useState([]);
@@ -33,9 +38,20 @@ export default function AdminDashboardPage() {
   const [savingProduct, setSavingProduct] = useState(false);
 
   useEffect(() => {
-    setWhatsappNumState(getWhatsAppNumber());
-    fetchData();
-  }, []);
+    if (!authLoading) {
+      if (!user || user.role !== 'admin') {
+        toast.error('Admin authentication required.');
+        router.replace('/admin/login');
+        return;
+      }
+      // Load stored whatsapp number
+      setWhatsappNumState(getWhatsAppNumber());
+      fetchStoreWhatsAppNumber().then((num) => {
+        if (num) setWhatsappNumState(num);
+      });
+      fetchData();
+    }
+  }, [user, authLoading, router]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -56,11 +72,18 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleSaveWhatsAppNumber = (e) => {
+  const handleSaveWhatsAppNumber = async (e) => {
     e.preventDefault();
-    setWhatsAppNumber(whatsappNum);
-    toast.success('Official Store WhatsApp number updated! 📱');
+    const cleaned = setWhatsAppNumber(whatsappNum);
+    setWhatsappNumState(cleaned);
+    try {
+      await api.put('/settings', { whatsappNumber: whatsappNum });
+      toast.success('Official Store WhatsApp number updated globally! 📱');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Saved locally, but failed to sync to server.');
+    }
   };
+
 
   const handleOpenAddModal = () => {
     setEditingProduct(null);
@@ -145,6 +168,15 @@ export default function AdminDashboardPage() {
       toast.error(err.response?.data?.message || 'Failed to update order status');
     }
   };
+
+  if (authLoading || !user || user.role !== 'admin') {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-12 h-12 border-4 border-choco-800 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-choco-800 font-semibold">Verifying Admin Permissions...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-4 sm:p-6 max-w-7xl mx-auto">

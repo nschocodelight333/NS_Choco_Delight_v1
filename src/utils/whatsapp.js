@@ -7,9 +7,30 @@ export const getWhatsAppNumber = () => {
 };
 
 export const setWhatsAppNumber = (number) => {
-  if (typeof window !== 'undefined' && number) {
-    localStorage.setItem('store_whatsapp_number', number.replace(/\D/g, ''));
+  const clean = number ? String(number).replace(/\D/g, '') : '';
+  if (typeof window !== 'undefined' && clean) {
+    localStorage.setItem('store_whatsapp_number', clean);
+    // Dispatch event so active components re-render immediately
+    window.dispatchEvent(new CustomEvent('whatsapp_number_changed', { detail: clean }));
   }
+  return clean;
+};
+
+export const fetchStoreWhatsAppNumber = async () => {
+  try {
+    const res = await fetch('/api/settings');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.settings?.store_whatsapp_number) {
+        const num = data.settings.store_whatsapp_number;
+        setWhatsAppNumber(num);
+        return num;
+      }
+    }
+  } catch (err) {
+    console.error('Failed to fetch remote store whatsapp number:', err);
+  }
+  return getWhatsAppNumber();
 };
 
 export const buildWhatsAppUrl = (param1 = '', param2 = '') => {
