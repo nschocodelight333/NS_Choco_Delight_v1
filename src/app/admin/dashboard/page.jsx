@@ -184,10 +184,10 @@ export default function AdminDashboardPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-3xl shadow-sm border border-choco-100">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-choco-900 flex items-center gap-2">
-            🛠️ Store Operations Dashboard
+            👑 Admin Dashboard
           </h1>
           <p className="text-choco-500 text-xs sm:text-sm mt-0.5">
-            Manage chocolates, mobile notification numbers, customer orders, and telemetry
+            Manage chocolate products, WhatsApp notification numbers, customer orders, and telemetry
           </p>
         </div>
 
@@ -195,51 +195,67 @@ export default function AdminDashboardPage() {
           href="/"
           className="btn-secondary text-xs sm:text-sm py-2 px-4 flex items-center gap-1.5"
         >
-          🌐 Back to Public Store
+          🌐 View Public Store
         </Link>
       </div>
 
-      {/* Admin Tabs */}
-      <div className="flex overflow-x-auto gap-2 border-b border-choco-200 pb-2 scrollbar-none">
+      {/* Admin Tabs - Vertical Stacked Order on Mobile, Clean Row on Desktop (Non-scrollable) */}
+      <div className="flex flex-col sm:flex-row gap-2 bg-white/70 p-1.5 rounded-2xl border border-choco-200/80 shadow-xs">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+          className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-between sm:justify-center gap-2 ${
             activeTab === 'overview'
               ? 'bg-choco-800 text-cream shadow-sm'
               : 'bg-white text-choco-700 hover:bg-choco-50'
           }`}
         >
-          📊 Business Overview
+          <span className="flex items-center gap-2">
+            <span>📊</span>
+            <span>Business Overview</span>
+          </span>
+          {activeTab === 'overview' && <span className="sm:hidden text-xs text-gold-300 font-bold">● Active</span>}
         </button>
         <button
           onClick={() => setActiveTab('products')}
-          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-between sm:justify-center gap-2 ${
             activeTab === 'products'
               ? 'bg-choco-800 text-cream shadow-sm'
               : 'bg-white text-choco-700 hover:bg-choco-50'
           }`}
         >
-          🍫 Manage Chocolates ({products.length})
+          <span className="flex items-center gap-2">
+            <span>🍫</span>
+            <span>Manage Chocolates ({products.length})</span>
+          </span>
+          {activeTab === 'products' && <span className="sm:hidden text-xs text-gold-300 font-bold">● Active</span>}
         </button>
         <button
           onClick={() => setActiveTab('whatsapp')}
-          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-between sm:justify-center gap-2 ${
             activeTab === 'whatsapp'
               ? 'bg-choco-800 text-cream shadow-sm'
               : 'bg-white text-choco-700 hover:bg-choco-50'
           }`}
         >
-          📱 Store WhatsApp Number
+          <span className="flex items-center gap-2">
+            <span>📱</span>
+            <span>Store WhatsApp Number</span>
+          </span>
+          {activeTab === 'whatsapp' && <span className="sm:hidden text-xs text-gold-300 font-bold">● Active</span>}
         </button>
         <button
           onClick={() => setActiveTab('orders')}
-          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-between sm:justify-center gap-2 ${
             activeTab === 'orders'
               ? 'bg-choco-800 text-cream shadow-sm'
               : 'bg-white text-choco-700 hover:bg-choco-50'
           }`}
         >
-          📦 Orders Telemetry ({orders.length})
+          <span className="flex items-center gap-2">
+            <span>📦</span>
+            <span>Orders Telemetry ({orders.length})</span>
+          </span>
+          {activeTab === 'orders' && <span className="sm:hidden text-xs text-gold-300 font-bold">● Active</span>}
         </button>
       </div>
 
