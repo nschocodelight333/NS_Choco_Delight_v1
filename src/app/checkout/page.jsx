@@ -15,6 +15,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { user, updateUserProfile } = useAuth();
   const { cart, cartTotal } = useCart();
+  const { cart, cartTotal, fetchCart, emptyCart } = useCart();
   const items = cart?.items || [];
 
   const [address, setAddress] = useState({
@@ -134,6 +135,19 @@ export default function CheckoutPage() {
         updateUserProfile({ phone: address.phone }).catch(() => {});
       }
 
+      const formattedItems = items.map((i) => {
+        const prod = i.product || {};
+        return {
+          product: prod._id || i.product,
+          productId: prod._id || i.product,
+          name: prod.name || i.name || 'Handcrafted Chocolate',
+          image: prod.images?.[0] || prod.image || i.image || '',
+          price: prod.price !== undefined ? prod.price : (i.price || 0),
+          quantity: i.quantity || 1,
+          shape: i.shape || '',
+        };
+      });
+
       const newOrder = await createOrder({
         deliveryAddress: finalAddress,
         items: items.map((i) => ({
@@ -141,11 +155,23 @@ export default function CheckoutPage() {
           quantity: i.quantity,
           shape: i.shape || '',
         })),
+        items: formattedItems,
+        itemsTotal: cartTotal,
+        deliveryFee,
+        totalAmount,
+        notes: '',
+        paymentMethod: isTakeaway ? 'takeaway' : 'cod',
         paymentInfo: {
           status: statusType,
           paymentMethod: statusType,
+          status: isTakeaway ? 'cod' : (statusType || 'cod'),
+          paymentMethod: isTakeaway ? 'takeaway' : (statusType || 'cod'),
         },
       });
+
+      if (fetchCart) {
+        await fetchCart();
+      }
 
       toast.success(
         statusType === 'takeaway'
