@@ -42,7 +42,6 @@ export async function POST(req) {
     }
 
     await connectDB();
-    const { items, deliveryAddress, itemsTotal, deliveryFee = 40, totalAmount, notes, paymentMethod } = await req.json();
     const body = await req.json();
     const {
       items,
@@ -55,7 +54,6 @@ export async function POST(req) {
       paymentInfo,
     } = body;
 
-    if (!items || items.length === 0) {
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
         { success: false, message: 'No items in order' },
@@ -116,18 +114,13 @@ export async function POST(req) {
     const order = await Order.create({
       user: user._id,
       orderSource: 'website',
-      items,
       items: validatedItems,
       deliveryAddress,
-      itemsTotal,
-      deliveryFee,
-      totalAmount,
       itemsTotal: finalItemsTotal,
       deliveryFee: finalDeliveryFee,
       totalAmount: finalTotalAmount,
       notes: notes || '',
       paymentInfo: {
-        status: paymentMethod === 'cod' ? 'cod' : 'pending',
         status: paymentStatus,
         razorpayOrderId: paymentInfo?.razorpayOrderId || '',
         razorpayPaymentId: paymentInfo?.razorpayPaymentId || '',
@@ -139,10 +132,13 @@ export async function POST(req) {
     // Clear user cart after placing order
     await Cart.findOneAndUpdate({ user: user._id }, { items: [] });
 
-    return NextResponse.json({
-      success: true,
-      order,
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        order,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error('Create order error:', error);
     return NextResponse.json(

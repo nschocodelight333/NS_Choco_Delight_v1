@@ -14,7 +14,6 @@ const FREE_DELIVERY_THRESHOLD = 500;
 export default function CheckoutPage() {
   const router = useRouter();
   const { user, updateUserProfile } = useAuth();
-  const { cart, cartTotal } = useCart();
   const { cart, cartTotal, fetchCart, emptyCart } = useCart();
   const items = cart?.items || [];
 
@@ -150,11 +149,6 @@ export default function CheckoutPage() {
 
       const newOrder = await createOrder({
         deliveryAddress: finalAddress,
-        items: items.map((i) => ({
-          productId: i.product?._id || i.product,
-          quantity: i.quantity,
-          shape: i.shape || '',
-        })),
         items: formattedItems,
         itemsTotal: cartTotal,
         deliveryFee,
@@ -162,8 +156,6 @@ export default function CheckoutPage() {
         notes: '',
         paymentMethod: isTakeaway ? 'takeaway' : 'cod',
         paymentInfo: {
-          status: statusType,
-          paymentMethod: statusType,
           status: isTakeaway ? 'cod' : (statusType || 'cod'),
           paymentMethod: isTakeaway ? 'takeaway' : (statusType || 'cod'),
         },
