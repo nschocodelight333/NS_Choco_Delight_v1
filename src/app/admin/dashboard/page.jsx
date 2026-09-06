@@ -184,7 +184,7 @@ export default function AdminDashboardPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-3xl shadow-sm border border-choco-100">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-choco-900 flex items-center gap-2">
-            🛠️ Store Operations Dashboard
+            👑 Admin Dashboard
           </h1>
           <p className="text-choco-500 text-xs sm:text-sm mt-0.5">
             Manage chocolates, mobile notification numbers, customer orders, and telemetry
@@ -199,198 +199,226 @@ export default function AdminDashboardPage() {
         </Link>
       </div>
 
-      {/* Admin Tabs */}
-      <div className="flex overflow-x-auto gap-2 border-b border-choco-200 pb-2 scrollbar-none">
+      {/* Admin Tabs - Vertical on mobile, responsive grid, no horizontal scroll */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 border-b border-choco-200 pb-3">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+          className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-2 ${
             activeTab === 'overview'
               ? 'bg-choco-800 text-cream shadow-sm'
-              : 'bg-white text-choco-700 hover:bg-choco-50'
+              : 'bg-white text-choco-700 hover:bg-choco-50 border border-choco-100'
           }`}
         >
-          📊 Business Overview
+          <span>📊</span> Business Overview
         </button>
         <button
           onClick={() => setActiveTab('products')}
-          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-2 ${
             activeTab === 'products'
               ? 'bg-choco-800 text-cream shadow-sm'
-              : 'bg-white text-choco-700 hover:bg-choco-50'
+              : 'bg-white text-choco-700 hover:bg-choco-50 border border-choco-100'
           }`}
         >
-          🍫 Manage Chocolates ({products.length})
+          <span>🍫</span> Manage Chocolates ({products.length})
         </button>
         <button
           onClick={() => setActiveTab('whatsapp')}
-          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-2 ${
             activeTab === 'whatsapp'
               ? 'bg-choco-800 text-cream shadow-sm'
-              : 'bg-white text-choco-700 hover:bg-choco-50'
+              : 'bg-white text-choco-700 hover:bg-choco-50 border border-choco-100'
           }`}
         >
-          📱 Store WhatsApp Number
+          <span>📱</span> Store WhatsApp Number
         </button>
         <button
           onClick={() => setActiveTab('orders')}
-          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-2 ${
             activeTab === 'orders'
               ? 'bg-choco-800 text-cream shadow-sm'
-              : 'bg-white text-choco-700 hover:bg-choco-50'
+              : 'bg-white text-choco-700 hover:bg-choco-50 border border-choco-100'
           }`}
         >
-          📦 Orders Telemetry ({orders.length})
+          <span>📦</span> Orders Telemetry ({orders.length})
         </button>
       </div>
 
-      {/* TAB 1: OVERVIEW */}
+      {/* TAB 1: OVERVIEW - Clean Vertical Layout */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl">
-                📦
+          {/* Vertical Stacked Overview Items */}
+          <div className="flex flex-col space-y-3.5">
+            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl flex-shrink-0">
+                  📦
+                </div>
+                <div>
+                  <p className="text-choco-500 text-xs font-medium">Total Orders</p>
+                  <p className="font-display text-2xl font-bold text-choco-900">{stats?.totalOrders || orders.length || 0}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-choco-500 text-xs font-medium">Total Orders</p>
-                <p className="font-display text-2xl font-bold text-choco-900">{stats?.totalOrders || orders.length || 0}</p>
-              </div>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-blue-700 hidden sm:inline-block">
+                All-time Orders
+              </span>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl">
-                💰
+            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl flex-shrink-0">
+                  💰
+                </div>
+                <div>
+                  <p className="text-choco-500 text-xs font-medium">Total Revenue</p>
+                  <p className="font-display text-2xl font-bold text-choco-900">
+                    ₹{stats?.totalRevenue?.toLocaleString('en-IN') || 0}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-choco-500 text-xs font-medium">Total Revenue</p>
-                <p className="font-display text-2xl font-bold text-choco-900">
-                  ₹{stats?.totalRevenue?.toLocaleString('en-IN') || 0}
-                </p>
-              </div>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 hidden sm:inline-block">
+                Gross Earnings
+              </span>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl">
-                ⏳
+            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl flex-shrink-0">
+                  ⏳
+                </div>
+                <div>
+                  <p className="text-choco-500 text-xs font-medium">Pending Orders</p>
+                  <p className="font-display text-2xl font-bold text-choco-900">{stats?.pendingOrders || 0}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-choco-500 text-xs font-medium">Pending Orders</p>
-                <p className="font-display text-2xl font-bold text-choco-900">{stats?.pendingOrders || 0}</p>
-              </div>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-amber-50 text-amber-700 hidden sm:inline-block">
+                Needs Attention
+              </span>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl">
-                👥
+            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl flex-shrink-0">
+                  👥
+                </div>
+                <div>
+                  <p className="text-choco-500 text-xs font-medium">Customers</p>
+                  <p className="font-display text-2xl font-bold text-choco-900">{stats?.totalCustomers || 0}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-choco-500 text-xs font-medium">Customers</p>
-                <p className="font-display text-2xl font-bold text-choco-900">{stats?.totalCustomers || 0}</p>
-              </div>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-purple-50 text-purple-700 hidden sm:inline-block">
+                Registered Users
+              </span>
             </div>
           </div>
 
+          {/* Quick Store Actions - Vertical Stack */}
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-choco-100">
             <h3 className="font-display text-lg font-bold text-choco-900 mb-3">⚡ Quick Store Actions</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="flex flex-col space-y-3">
               <button
                 onClick={() => { setActiveTab('products'); handleOpenAddModal(); }}
-                className="btn-gold p-4 text-center text-sm font-semibold flex flex-col items-center gap-2"
+                className="btn-gold p-4 text-left text-sm font-semibold flex items-center gap-3.5 w-full justify-start rounded-2xl"
               >
-                <span className="text-2xl">🍫</span> Add New Chocolate Product
+                <span className="text-2xl">🍫</span>
+                <div>
+                  <p className="font-bold">Add New Chocolate Product</p>
+                  <p className="text-xs font-normal opacity-90">Create a new item, set pricing, shape options, and inventory stock</p>
+                </div>
               </button>
               <button
                 onClick={() => setActiveTab('whatsapp')}
-                className="btn-secondary p-4 text-center text-sm font-semibold flex flex-col items-center gap-2"
+                className="btn-secondary p-4 text-left text-sm font-semibold flex items-center gap-3.5 w-full justify-start rounded-2xl border border-choco-200"
               >
-                <span className="text-2xl">📱</span> Configure WhatsApp Mobile Number
+                <span className="text-2xl">📱</span>
+                <div>
+                  <p className="font-bold">Configure WhatsApp Mobile Number</p>
+                  <p className="text-xs font-normal text-choco-600">Update destination mobile number for customer inquiries and orders</p>
+                </div>
               </button>
               <button
                 onClick={() => setActiveTab('orders')}
-                className="btn-primary p-4 text-center text-sm font-semibold flex flex-col items-center gap-2"
+                className="btn-primary p-4 text-left text-sm font-semibold flex items-center gap-3.5 w-full justify-start rounded-2xl"
               >
-                <span className="text-2xl">📦</span> Review Customer Orders
+                <span className="text-2xl">📦</span>
+                <div>
+                  <p className="font-bold">Review Customer Orders</p>
+                  <p className="text-xs font-normal text-choco-200">Track order statuses, customer addresses, and order delivery</p>
+                </div>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 2: MANAGE CHOCOLATES */}
+      {/* TAB 2: MANAGE CHOCOLATES - Vertical Layout */}
       {activeTab === 'products' && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-choco-100 shadow-sm">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm">
             <div>
               <h2 className="font-display text-xl font-bold text-choco-900">Chocolate Catalog ({products.length})</h2>
               <p className="text-choco-500 text-xs">Add, edit prices, stock, or remove chocolates</p>
             </div>
-            <button onClick={handleOpenAddModal} className="btn-gold py-2.5 px-4 text-xs sm:text-sm font-semibold flex items-center gap-1.5">
+            <button onClick={handleOpenAddModal} className="btn-gold py-2.5 px-4 text-xs sm:text-sm font-semibold flex items-center gap-1.5 w-full sm:w-auto justify-center">
               ✨ Add New Chocolate
             </button>
           </div>
 
-          <div className="bg-white rounded-2xl border border-choco-100 shadow-sm overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-choco-50 text-choco-700 text-xs font-semibold uppercase tracking-wider border-b border-choco-100">
-                  <th className="p-3.5">Chocolate</th>
-                  <th className="p-3.5">Category</th>
-                  <th className="p-3.5">Price</th>
-                  <th className="p-3.5">Stock</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-choco-100 text-sm">
-                {products.map((p) => (
-                  <tr key={p._id} className="hover:bg-choco-50/50 transition-colors">
-                    <td className="p-3.5 flex items-center gap-3">
-                      <img
-                        src={p.images?.[0] || 'https://images.unsplash.com/photo-1548907040-4baa42d10919?w=100&q=80'}
-                        alt={p.name}
-                        className="w-10 h-10 rounded-xl object-cover border border-choco-200"
-                      />
-                      <div>
-                        <p className="font-semibold text-choco-900 text-sm leading-tight">{p.name}</p>
-                        <p className="text-[11px] text-choco-400 truncate max-w-xs">{p.description}</p>
+          <div className="space-y-3">
+            {products.length === 0 ? (
+              <div className="bg-white p-12 rounded-3xl text-center border border-choco-100">
+                <span className="text-4xl block mb-2">🍫</span>
+                <p className="text-choco-600 font-medium">No chocolates in catalog yet.</p>
+              </div>
+            ) : (
+              products.map((p) => (
+                <div
+                  key={p._id}
+                  className="bg-white p-4 rounded-2xl border border-choco-100 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-choco-200 transition-colors"
+                >
+                  <div className="flex items-center gap-3.5 w-full sm:w-auto">
+                    <img
+                      src={p.images?.[0] || 'https://images.unsplash.com/photo-1548907040-4baa42d10919?w=100&q=80'}
+                      alt={p.name}
+                      className="w-14 h-14 rounded-xl object-cover border border-choco-200 flex-shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-semibold text-choco-900 text-sm">{p.name}</h4>
+                        <span className="badge bg-choco-100 text-choco-800 text-[11px]">
+                          {p.category === 'Bites' ? '🍬 Bites' : '🍫 Bar'}
+                        </span>
+                        {p.isAvailable ? (
+                          <span className="text-[11px] text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full">✓ Active</span>
+                        ) : (
+                          <span className="text-[11px] text-red-500 font-medium bg-red-50 px-2 py-0.5 rounded-full">Hidden</span>
+                        )}
                       </div>
-                    </td>
-                    <td className="p-3.5">
-                      <span className="badge bg-choco-100 text-choco-800 text-xs">
-                        {p.category === 'Bites' ? '🍬 Bites' : '🍫 Bar'}
-                      </span>
-                    </td>
-                    <td className="p-3.5 font-bold text-choco-900 font-display">₹{p.price}</td>
-                    <td className="p-3.5">
-                      <span className={`font-semibold text-xs px-2 py-0.5 rounded-full ${p.stock > 10 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                        {p.stock} in stock
-                      </span>
-                    </td>
-                    <td className="p-3.5">
-                      {p.isAvailable ? (
-                        <span className="text-xs text-emerald-600 font-medium">✓ Active</span>
-                      ) : (
-                        <span className="text-xs text-red-500 font-medium">Hidden</span>
-                      )}
-                    </td>
-                    <td className="p-3.5 text-right space-x-2">
-                      <button
-                        onClick={() => handleOpenEditModal(p)}
-                        className="px-3 py-1.5 rounded-xl bg-choco-100 hover:bg-choco-200 text-choco-800 text-xs font-semibold transition-colors"
-                      >
-                        ✏️ Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProduct(p._id, p.name)}
-                        className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition-colors"
-                      >
-                        🗑️ Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <p className="text-xs text-choco-400 line-clamp-1 mt-0.5">{p.description}</p>
+                      <div className="flex items-center gap-3 mt-1 text-xs">
+                        <span className="font-bold text-choco-900 font-display text-base">₹{p.price}</span>
+                        <span className={`font-semibold text-[11px] px-2 py-0.5 rounded-full ${p.stock > 10 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                          {p.stock} in stock
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-t-0 pt-2.5 sm:pt-0 border-choco-50">
+                    <button
+                      onClick={() => handleOpenEditModal(p)}
+                      className="px-3.5 py-1.5 rounded-xl bg-choco-100 hover:bg-choco-200 text-choco-800 text-xs font-semibold transition-colors flex items-center gap-1"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteProduct(p._id, p.name)}
+                      className="px-3.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition-colors flex items-center gap-1"
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -448,10 +476,10 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* TAB 4: ORDERS TELEMETRY */}
+      {/* TAB 4: ORDERS TELEMETRY - Vertical Order Stack */}
       {activeTab === 'orders' && (
         <div className="space-y-4">
-          <div className="bg-white p-4 rounded-2xl border border-choco-100 shadow-sm">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm">
             <h2 className="font-display text-xl font-bold text-choco-900">Customer Orders ({orders.length})</h2>
             <p className="text-choco-500 text-xs">Track order status and update customer order states</p>
           </div>
@@ -462,53 +490,68 @@ export default function AdminDashboardPage() {
               <p className="text-choco-600 font-medium">No customer orders recorded yet.</p>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-choco-100 shadow-sm overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-choco-50 text-choco-700 text-xs font-semibold uppercase tracking-wider border-b border-choco-100">
-                    <th className="p-3.5">Order ID</th>
-                    <th className="p-3.5">Customer</th>
-                    <th className="p-3.5">Items</th>
-                    <th className="p-3.5">Total</th>
-                    <th className="p-3.5">Payment</th>
-                    <th className="p-3.5">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-choco-100 text-sm">
-                  {orders.map((o) => (
-                    <tr key={o._id} className="hover:bg-choco-50/50">
-                      <td className="p-3.5 font-mono text-xs font-semibold text-choco-700">#{o._id.slice(-6)}</td>
-                      <td className="p-3.5">
-                        <p className="font-semibold text-choco-900">{o.shippingAddress?.fullName || o.user?.name || 'Customer'}</p>
-                        <p className="text-[11px] text-choco-400">{o.shippingAddress?.phone || o.user?.phone || 'No Phone'}</p>
-                      </td>
-                      <td className="p-3.5 text-xs text-choco-700">
-                        {o.items?.map((it) => `${it.product?.name || 'Chocolate'} (x${it.quantity})`).join(', ')}
-                      </td>
-                      <td className="p-3.5 font-bold font-display text-choco-900">₹{o.totalAmount}</td>
-                      <td className="p-3.5">
-                        <span className="text-xs font-medium uppercase px-2 py-0.5 rounded-md bg-choco-100 text-choco-800">
-                          {o.paymentMethod || 'COD'}
-                        </span>
-                      </td>
-                      <td className="p-3.5">
-                        <select
-                          value={o.status}
-                          onChange={(e) => handleOrderStatusChange(o._id, e.target.value)}
-                          className="text-xs font-semibold p-1.5 rounded-xl border border-choco-200 bg-white text-choco-900 focus:outline-none"
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="Confirmed">Confirmed</option>
-                          <option value="Preparing">Preparing</option>
-                          <option value="Out for Delivery">Out for Delivery</option>
-                          <option value="Delivered">Delivered</option>
-                          <option value="Cancelled">Cancelled</option>
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-3">
+              {orders.map((o) => (
+                <div
+                  key={o._id}
+                  className="bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm flex flex-col md:flex-row justify-between gap-4 hover:border-choco-200 transition-colors"
+                >
+                  <div className="space-y-2 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-choco-700 bg-choco-100 px-2.5 py-1 rounded-lg">
+                        #{o._id.slice(-6)}
+                      </span>
+                      <span className="text-xs font-medium uppercase px-2 py-0.5 rounded-md bg-choco-100 text-choco-800">
+                        {o.paymentMethod || 'COD'}
+                      </span>
+                      <span className="text-xs text-choco-400">
+                        {new Date(o.createdAt).toLocaleDateString('en-IN', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-choco-900 text-sm">
+                        {o.shippingAddress?.fullName || o.user?.name || 'Customer'}
+                      </p>
+                      <p className="text-xs text-choco-500">
+                        📱 {o.shippingAddress?.phone || o.user?.phone || 'No Phone'}
+                        {o.shippingAddress?.city ? ` • ${o.shippingAddress.city}, ${o.shippingAddress.state || ''}` : ''}
+                      </p>
+                    </div>
+                    <div className="text-xs text-choco-700 bg-choco-50 p-2.5 rounded-xl">
+                      <span className="font-semibold text-choco-800">Items: </span>
+                      {o.items?.map((it) => `${it.product?.name || 'Chocolate'} (x${it.quantity})`).join(', ')}
+                    </div>
+                  </div>
+
+                  <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center gap-3 border-t md:border-t-0 pt-3 md:pt-0 border-choco-100">
+                    <div className="text-left md:text-right">
+                      <p className="text-[11px] text-choco-400">Total Amount</p>
+                      <p className="font-bold font-display text-lg sm:text-xl text-choco-900">₹{o.totalAmount}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-choco-500 hidden sm:inline">Status:</span>
+                      <select
+                        value={o.status}
+                        onChange={(e) => handleOrderStatusChange(o._id, e.target.value)}
+                        className="text-xs font-semibold p-2 rounded-xl border border-choco-200 bg-white text-choco-900 focus:outline-none cursor-pointer shadow-xs"
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="Preparing">Preparing</option>
+                        <option value="Out for Delivery">Out for Delivery</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

@@ -61,26 +61,36 @@ const Navbar = () => {
     }
   };
 
-  const navLinks = [
-    { to: '/', label: 'Home' },
-    { to: '/products', label: 'Shop' },
-    ...(hasOccasions ? [{ to: '/special-occasions', label: '🎉 Special Occasions' }] : []),
-    { to: '/customize', label: '✨ Customize' },
-    { to: '/about', label: 'About' },
-    { to: '/contact', label: 'Contact' },
-  ];
+  const navLinks = user?.role === 'admin'
+    ? [
+        { to: '/admin/dashboard', label: '👑 Admin Dashboard' },
+        ...(hasOccasions ? [{ to: '/special-occasions', label: '🎉 Occasions' }] : []),
+        { to: '/', label: '🌐 View Store' },
+        { to: '/about', label: 'About' },
+        { to: '/contact', label: 'Contact' },
+      ]
+    : [
+        { to: '/', label: 'Home' },
+        { to: '/products', label: 'Shop' },
+        ...(hasOccasions ? [{ to: '/special-occasions', label: '🎉 Special Occasions' }] : []),
+        { to: '/customize', label: '✨ Customize' },
+        { to: '/about', label: 'About' },
+        { to: '/contact', label: 'Contact' },
+      ];
 
   return (
     <header className="sticky top-0 z-50 glass border-b border-choco-200/50">
       <div className="page-container">
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-2 group">
+          <Link href={user?.role === 'admin' ? '/admin/dashboard' : '/'} className="flex items-center gap-2 group">
             <div className="w-10 h-10 rounded-full bg-choco-gradient flex items-center justify-center shadow-choco">
               <span className="text-cream text-lg">🍫</span>
             </div>
             <div>
               <p className="font-display font-bold text-choco-900 text-base leading-none">NS Choco Delight</p>
-              <p className="text-choco-500 text-[10px] leading-none">Made with Heart</p>
+              <p className="text-choco-500 text-[10px] leading-none">
+                {user?.role === 'admin' ? 'Admin Portal' : 'Made with Heart'}
+              </p>
             </div>
           </Link>
 
@@ -104,20 +114,22 @@ const Navbar = () => {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Link
-              href="/cart"
-              id="nav-cart-btn"
-              className="relative p-2.5 rounded-xl bg-choco-50 hover:bg-choco-100 text-choco-800 transition-all duration-200"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-gold-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-gold">
-                  {cartCount > 99 ? '99+' : cartCount}
-                </span>
-              )}
-            </Link>
+            {user?.role !== 'admin' && (
+              <Link
+                href="/cart"
+                id="nav-cart-btn"
+                className="relative p-2.5 rounded-xl bg-choco-50 hover:bg-choco-100 text-choco-800 transition-all duration-200"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-gold-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-gold">
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
+              </Link>
+            )}
 
             {user ? (
               <div className="relative">
@@ -155,38 +167,46 @@ const Navbar = () => {
                         )}
                       </div>
 
-                      {user.role === 'admin' && (
-                        <Link
-                          href="/admin/dashboard"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center gap-2 px-4 py-2 text-sm text-choco-800 hover:bg-choco-50 font-semibold"
-                        >
-                          ⚙️ Admin Dashboard
-                        </Link>
+                      {user.role === 'admin' ? (
+                        <>
+                          <Link
+                            href="/admin/dashboard"
+                            onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-choco-800 hover:bg-choco-50 font-semibold"
+                          >
+                            👑 Admin Dashboard
+                          </Link>
+                          <button
+                            onClick={handleOpenProfileModal}
+                            className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-choco-700 hover:bg-choco-50"
+                          >
+                            👤 Admin Profile & Phone
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={handleOpenProfileModal}
+                            className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-choco-700 hover:bg-choco-50"
+                          >
+                            👤 My Profile & Phone
+                          </button>
+                          <Link
+                            href="/orders"
+                            onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-choco-700 hover:bg-choco-50"
+                          >
+                            📦 My Orders
+                          </Link>
+                          <Link
+                            href="/my-custom-orders"
+                            onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-choco-700 hover:bg-choco-50"
+                          >
+                            ✨ Custom Requests
+                          </Link>
+                        </>
                       )}
-
-                      <button
-                        onClick={handleOpenProfileModal}
-                        className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-choco-700 hover:bg-choco-50"
-                      >
-                        👤 My Profile & Phone
-                      </button>
-
-                      <Link
-                        href="/orders"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-choco-700 hover:bg-choco-50"
-                      >
-                        📦 My Orders
-                      </Link>
-
-                      <Link
-                        href="/my-custom-orders"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-choco-700 hover:bg-choco-50"
-                      >
-                        ✨ Custom Requests
-                      </Link>
 
                       <button
                         onClick={handleLogout}
