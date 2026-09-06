@@ -54,19 +54,19 @@
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] bg-choco-gradient text-cream font-semibold rounded-xl shadow-choco hover:shadow-choco-lg transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 text-sm;
+    @apply inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 min-h-[44px] bg-choco-gradient text-cream font-semibold rounded-xl shadow-choco hover:shadow-choco-lg transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] text-xs sm:text-sm whitespace-nowrap touch-manipulation select-none;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] border-2 border-choco-700 text-choco-800 font-semibold rounded-xl hover:bg-choco-700 hover:text-cream transition-all duration-300 text-sm;
+    @apply inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 min-h-[44px] border-2 border-choco-700 text-choco-800 font-semibold rounded-xl hover:bg-choco-700 hover:text-cream transition-all duration-300 active:scale-[0.98] text-xs sm:text-sm whitespace-nowrap touch-manipulation select-none;
   }
 
   .btn-gold {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] bg-gold-gradient text-choco-900 font-semibold rounded-xl shadow-gold hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 text-sm;
+    @apply inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 min-h-[44px] bg-gold-gradient text-choco-900 font-semibold rounded-xl shadow-gold hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] text-xs sm:text-sm whitespace-nowrap touch-manipulation select-none;
   }
 
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-all duration-200 text-sm;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-all duration-200 active:scale-[0.98] text-xs sm:text-sm whitespace-nowrap touch-manipulation select-none;
   }
 
   .card {
@@ -74,7 +74,7 @@
   }
 
   .input-field {
-    @apply w-full px-4 py-3 min-h-[44px] border border-choco-200 rounded-xl bg-white text-choco-900 placeholder-choco-400 focus:border-choco-500 focus:ring-2 focus:ring-choco-500/20 transition-all duration-200 text-sm;
+    @apply w-full px-4 py-3 min-h-[44px] border border-choco-200 rounded-xl bg-white text-choco-900 placeholder-choco-400 focus:border-choco-500 focus:ring-2 focus:ring-choco-500/20 transition-all duration-200 text-sm sm:text-base;
   }
 
   .label {

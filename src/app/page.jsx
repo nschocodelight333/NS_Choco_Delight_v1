@@ -81,7 +81,7 @@ export default function Home() {
                   id="hero-customize-btn"
                   className="btn-secondary py-3.5 px-6 sm:px-8 text-sm sm:text-base font-semibold border-white/20 text-cream text-center hover:bg-white/10"
                 >
-                  Custom Request ✨
+                  Custom Request
                 </Link>
               </div>
 
