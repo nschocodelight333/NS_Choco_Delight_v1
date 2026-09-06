@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { getDashboardStats } from '@/api/admin';
 import { getWhatsAppNumber, setWhatsAppNumber, fetchStoreWhatsAppNumber } from '@/utils/whatsapp';
+import { getImageUrl } from '@/utils/imageUrl';
 import api from '@/api/axios';
 
 export default function AdminDashboardPage() {
@@ -32,12 +33,17 @@ export default function AdminDashboardPage() {
     price: '',
     stock: '',
     description: '',
-    images: '',
+    images: [],
     shapeOptions: ['Normal', 'Heart'],
     isAvailable: true,
     isFeatured: false,
   });
   const [savingProduct, setSavingProduct] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [customUrlInput, setCustomUrlInput] = useState('');
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (!authLoading) {
@@ -87,6 +93,113 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const compressImage = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDimension = 1200;
+
+          if (width > height && width > maxDimension) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else if (height > maxDimension) {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          resolve(dataUrl);
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
+  const handleImageFiles = async (files) => {
+    if (!files || files.length === 0) return;
+    const validFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
+    if (validFiles.length === 0) {
+      toast.error('Please select image files (PNG, JPG, WEBP, etc.)');
+      return;
+    }
+
+    setUploadingImage(true);
+    const toastId = toast.loading(`Uploading ${validFiles.length} photo(s)...`);
+    try {
+      const newUrls = [];
+      for (const file of validFiles) {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          const res = await api.post('/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          if (res.data?.url) {
+            newUrls.push(res.data.url);
+            continue;
+          }
+        } catch (uploadErr) {
+          console.warn('API upload fallback to local canvas compression:', uploadErr);
+        }
+
+        const compressed = await compressImage(file);
+        newUrls.push(compressed);
+      }
+
+      setProductForm((prev) => ({
+        ...prev,
+        images: [...(Array.isArray(prev.images) ? prev.images : []), ...newUrls],
+      }));
+      toast.success(`Added ${newUrls.length} photo(s)! 📸`, { id: toastId });
+    } catch (err) {
+      console.error('Image processing error:', err);
+      toast.error('Failed to process image file', { id: toastId });
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveImage = (indexToRemove) => {
+    setProductForm((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, idx) => idx !== indexToRemove),
+    }));
+  };
+
+  const handleSetCoverImage = (index) => {
+    if (index === 0) return;
+    setProductForm((prev) => {
+      const list = [...(prev.images || [])];
+      const [selected] = list.splice(index, 1);
+      list.unshift(selected);
+      return { ...prev, images: list };
+    });
+  };
+
+  const handleAddCustomUrl = () => {
+    if (!customUrlInput.trim()) return;
+    setProductForm((prev) => ({
+      ...prev,
+      images: [...(prev.images || []), customUrlInput.trim()],
+    }));
+    setCustomUrlInput('');
+    setShowUrlInput(false);
+    toast.success('Image URL added! 🔗');
+  };
+
   const handleOpenAddModal = () => {
     setEditingProduct(null);
     setProductForm({
@@ -95,27 +208,36 @@ export default function AdminDashboardPage() {
       price: '',
       stock: '',
       description: '',
-      images: '',
+      images: [],
       shapeOptions: ['Normal', 'Heart'],
       isAvailable: true,
       isFeatured: false,
     });
+    setCustomUrlInput('');
+    setShowUrlInput(false);
     setShowProductModal(true);
   };
 
   const handleOpenEditModal = (prod) => {
     setEditingProduct(prod);
+    const existingImages = Array.isArray(prod.images)
+      ? prod.images
+      : prod.images
+      ? [prod.images]
+      : [];
     setProductForm({
       name: prod.name,
       category: prod.category || 'Normal Shape or Heart',
       price: prod.price,
       stock: prod.stock,
       description: prod.description || '',
-      images: prod.images?.join('\n') || '',
+      images: existingImages,
       shapeOptions: prod.shapeOptions || (prod.category === 'Bites' ? [] : ['Normal', 'Heart']),
       isAvailable: prod.isAvailable !== false,
       isFeatured: prod.isFeatured === true,
     });
+    setCustomUrlInput('');
+    setShowUrlInput(false);
     setShowProductModal(true);
   };
 
@@ -145,6 +267,10 @@ export default function AdminDashboardPage() {
 
   const handleSaveProduct = async (e) => {
     e.preventDefault();
+    if (!productForm.images || productForm.images.length === 0) {
+      toast.error('Please upload at least one chocolate photo');
+      return;
+    }
     setSavingProduct(true);
     try {
       const payload = {
@@ -153,9 +279,7 @@ export default function AdminDashboardPage() {
         price: Number(productForm.price),
         stock: Number(productForm.stock),
         description: productForm.description.trim(),
-        images: productForm.images
-          ? productForm.images.split('\n').map((url) => url.trim()).filter(Boolean)
-          : ['https://images.unsplash.com/photo-1548907040-4baa42d10919?w=800&q=80'],
+        images: productForm.images,
         shapeOptions: productForm.category === 'Bites' ? [] : productForm.shapeOptions,
         isAvailable: productForm.isAvailable,
         isFeatured: productForm.isFeatured,
@@ -410,7 +534,7 @@ export default function AdminDashboardPage() {
                 >
                   <div className="flex items-center gap-3.5 w-full sm:w-auto">
                     <img
-                      src={p.images?.[0] || 'https://images.unsplash.com/photo-1548907040-4baa42d10919?w=100&q=80'}
+                      src={getImageUrl(p.images?.[0]) || 'https://images.unsplash.com/photo-1548907040-4baa42d10919?w=100&q=80'}
                       alt={p.name}
                       className="w-14 h-14 rounded-xl object-cover border border-choco-200 flex-shrink-0"
                     />
@@ -722,14 +846,140 @@ export default function AdminDashboardPage() {
                   />
                 </div>
 
+                {/* Chocolate Photos Upload & Manager */}
                 <div>
-                  <label className="label">Image URL (One per line)</label>
-                  <textarea
-                    value={productForm.images}
-                    onChange={(e) => setProductForm((p) => ({ ...p, images: e.target.value }))}
-                    placeholder="https://images.unsplash.com/photo-..."
-                    className="input-field font-mono text-xs min-h-[70px]"
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="label mb-0">Chocolate Photos *</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowUrlInput((v) => !v)}
+                      className="text-xs text-choco-600 hover:text-choco-900 underline font-medium"
+                    >
+                      {showUrlInput ? '✕ Close URL input' : '🔗 Add via image link'}
+                    </button>
+                  </div>
+
+                  {/* Hidden native file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleImageFiles(e.target.files)}
                   />
+
+                  {/* Drag and Drop / File Picker Area */}
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      handleImageFiles(e.dataTransfer.files);
+                    }}
+                    className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all ${
+                      isDragging
+                        ? 'border-choco-800 bg-choco-100/70 scale-[1.01]'
+                        : 'border-choco-300 hover:border-choco-500 bg-choco-50/50 hover:bg-choco-50'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center justify-center gap-1.5">
+                      <div className="w-10 h-10 rounded-full bg-white shadow-xs border border-choco-200 flex items-center justify-center text-xl">
+                        📸
+                      </div>
+                      <p className="font-semibold text-choco-900 text-xs sm:text-sm">
+                        Click or drag local photos from your computer / phone
+                      </p>
+                      <p className="text-[11px] text-choco-500">
+                        Supports PNG, JPG, JPEG, WEBP files
+                      </p>
+                      <button
+                        type="button"
+                        disabled={uploadingImage}
+                        className="mt-1 btn-gold py-1.5 px-3.5 text-xs font-semibold rounded-lg shadow-xs pointer-events-none"
+                      >
+                        {uploadingImage ? 'Processing...' : '📁 Browse Local Photos'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Optional URL input toggle */}
+                  {showUrlInput && (
+                    <div className="mt-2.5 p-3 bg-choco-50 rounded-xl border border-choco-200 flex gap-2">
+                      <input
+                        type="url"
+                        placeholder="Paste image URL (https://...)"
+                        value={customUrlInput}
+                        onChange={(e) => setCustomUrlInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddCustomUrl();
+                          }
+                        }}
+                        className="input-field text-xs py-1.5 flex-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomUrl}
+                        className="btn-primary py-1.5 px-3 text-xs font-semibold rounded-xl"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Selected Photos Thumbnails Grid */}
+                  {productForm.images && productForm.images.length > 0 && (
+                    <div className="mt-3 space-y-1.5">
+                      <p className="text-[11px] font-semibold text-choco-700">
+                        Selected Photos ({productForm.images.length}) — First photo is cover
+                      </p>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                        {productForm.images.map((imgUrl, index) => (
+                          <div
+                            key={index}
+                            className="relative group rounded-xl overflow-hidden border border-choco-200 bg-choco-50 aspect-square shadow-xs"
+                          >
+                            <img
+                              src={getImageUrl(imgUrl)}
+                              alt={`Product preview ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            {index === 0 && (
+                              <span className="absolute top-1 left-1 bg-choco-900/90 backdrop-blur-xs text-gold-300 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-xs">
+                                ★ Cover
+                              </span>
+                            )}
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-1">
+                              {index !== 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetCoverImage(index)}
+                                  className="text-[9px] bg-white/90 hover:bg-white text-choco-900 font-semibold px-1.5 py-0.5 rounded shadow-xs"
+                                >
+                                  Make Cover
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveImage(index)}
+                                className="text-[10px] bg-red-600/90 hover:bg-red-700 text-white font-bold px-2 py-0.5 rounded shadow-xs"
+                                title="Remove photo"
+                              >
+                                ✕ Delete
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 pt-2">
