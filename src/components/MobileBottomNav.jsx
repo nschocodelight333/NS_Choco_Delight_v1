@@ -10,6 +10,11 @@ export default function MobileBottomNav() {
   const { user } = useAuth();
   const { cartCount } = useCart();
 
+  // If user is admin, do not display customer bottom navigation
+  if (user?.role === 'admin') {
+    return null;
+  }
+
   const navItems = [
     {
       href: '/',

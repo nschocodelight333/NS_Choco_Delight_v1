@@ -34,6 +34,8 @@ export default function AdminDashboardPage() {
     description: '',
     images: '',
     shapeOptions: ['Normal', 'Heart'],
+    isAvailable: true,
+    isFeatured: false,
   });
   const [savingProduct, setSavingProduct] = useState(false);
 
@@ -58,7 +60,7 @@ export default function AdminDashboardPage() {
     try {
       const [statsRes, prodRes, ordersRes] = await Promise.allSettled([
         getDashboardStats(),
-        api.get('/products'),
+        api.get('/products?all=true'),
         api.get('/admin/orders'),
       ]);
 
@@ -67,6 +69,7 @@ export default function AdminDashboardPage() {
       if (ordersRes.status === 'fulfilled') setOrders(ordersRes.value.data.orders || []);
     } catch (e) {
       console.error(e);
+      toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -84,7 +87,6 @@ export default function AdminDashboardPage() {
     }
   };
 
-
   const handleOpenAddModal = () => {
     setEditingProduct(null);
     setProductForm({
@@ -95,6 +97,8 @@ export default function AdminDashboardPage() {
       description: '',
       images: '',
       shapeOptions: ['Normal', 'Heart'],
+      isAvailable: true,
+      isFeatured: false,
     });
     setShowProductModal(true);
   };
@@ -108,9 +112,24 @@ export default function AdminDashboardPage() {
       stock: prod.stock,
       description: prod.description || '',
       images: prod.images?.join('\n') || '',
-      shapeOptions: prod.shapeOptions || ['Normal', 'Heart'],
+      shapeOptions: prod.shapeOptions || (prod.category === 'Bites' ? [] : ['Normal', 'Heart']),
+      isAvailable: prod.isAvailable !== false,
+      isFeatured: prod.isFeatured === true,
     });
     setShowProductModal(true);
+  };
+
+  const handleToggleProductAvailability = async (prod) => {
+    const updatedStatus = !prod.isAvailable;
+    try {
+      await api.put(`/products/${prod._id}`, { isAvailable: updatedStatus });
+      toast.success(`${prod.name} is now ${updatedStatus ? 'Active' : 'Hidden'}!`);
+      setProducts((prev) =>
+        prev.map((p) => (p._id === prod._id ? { ...p, isAvailable: updatedStatus } : p))
+      );
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update availability');
+    }
   };
 
   const handleDeleteProduct = async (id, name) => {
@@ -137,7 +156,9 @@ export default function AdminDashboardPage() {
         images: productForm.images
           ? productForm.images.split('\n').map((url) => url.trim()).filter(Boolean)
           : ['https://images.unsplash.com/photo-1548907040-4baa42d10919?w=800&q=80'],
-        shapeOptions: productForm.shapeOptions,
+        shapeOptions: productForm.category === 'Bites' ? [] : productForm.shapeOptions,
+        isAvailable: productForm.isAvailable,
+        isFeatured: productForm.isFeatured,
       };
 
       if (editingProduct) {
@@ -159,10 +180,12 @@ export default function AdminDashboardPage() {
 
   const handleOrderStatusChange = async (orderId, newStatus) => {
     try {
-      await api.put(`/orders/${orderId}`, { status: newStatus });
+      await api.put(`/orders/${orderId}`, { orderStatus: newStatus, status: newStatus });
       toast.success(`Order status updated to "${newStatus}"! 📦`);
       setOrders((prev) =>
-        prev.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o))
+        prev.map((o) =>
+          o._id === orderId ? { ...o, orderStatus: newStatus, status: newStatus } : o
+        )
       );
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update order status');
@@ -184,213 +207,267 @@ export default function AdminDashboardPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-3xl shadow-sm border border-choco-100">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-choco-900 flex items-center gap-2">
-            🛠️ Store Operations Dashboard
+            👑 Admin Dashboard
           </h1>
           <p className="text-choco-500 text-xs sm:text-sm mt-0.5">
             Manage chocolates, mobile notification numbers, customer orders, and telemetry
           </p>
         </div>
 
-        <Link
-          href="/"
-          className="btn-secondary text-xs sm:text-sm py-2 px-4 flex items-center gap-1.5"
-        >
-          🌐 Back to Public Store
-        </Link>
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="btn-secondary text-xs sm:text-sm py-2 px-3.5 flex items-center gap-1.5"
+            title="Reload telemetry data"
+          >
+            <span className={loading ? 'animate-spin' : ''}>🔄</span> {loading ? 'Syncing...' : 'Refresh'}
+          </button>
+          <Link
+            href="/"
+            className="btn-secondary text-xs sm:text-sm py-2 px-4 flex items-center gap-1.5"
+          >
+            🌐 View Store
+          </Link>
+        </div>
       </div>
 
-      {/* Admin Tabs */}
-      <div className="flex overflow-x-auto gap-2 border-b border-choco-200 pb-2 scrollbar-none">
+      {/* Admin Tabs - Vertical on mobile, responsive grid, no horizontal scroll */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 border-b border-choco-200 pb-3">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+          className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-2 ${
             activeTab === 'overview'
               ? 'bg-choco-800 text-cream shadow-sm'
-              : 'bg-white text-choco-700 hover:bg-choco-50'
+              : 'bg-white text-choco-700 hover:bg-choco-50 border border-choco-100'
           }`}
         >
-          📊 Business Overview
+          <span>📊</span> Business Overview
         </button>
         <button
           onClick={() => setActiveTab('products')}
-          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-2 ${
             activeTab === 'products'
               ? 'bg-choco-800 text-cream shadow-sm'
-              : 'bg-white text-choco-700 hover:bg-choco-50'
+              : 'bg-white text-choco-700 hover:bg-choco-50 border border-choco-100'
           }`}
         >
-          🍫 Manage Chocolates ({products.length})
+          <span>🍫</span> Manage Chocolates ({products.length})
         </button>
         <button
           onClick={() => setActiveTab('whatsapp')}
-          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-2 ${
             activeTab === 'whatsapp'
               ? 'bg-choco-800 text-cream shadow-sm'
-              : 'bg-white text-choco-700 hover:bg-choco-50'
+              : 'bg-white text-choco-700 hover:bg-choco-50 border border-choco-100'
           }`}
         >
-          📱 Store WhatsApp Number
+          <span>📱</span> Store WhatsApp Number
         </button>
         <button
           onClick={() => setActiveTab('orders')}
-          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-2 ${
             activeTab === 'orders'
               ? 'bg-choco-800 text-cream shadow-sm'
-              : 'bg-white text-choco-700 hover:bg-choco-50'
+              : 'bg-white text-choco-700 hover:bg-choco-50 border border-choco-100'
           }`}
         >
-          📦 Orders Telemetry ({orders.length})
+          <span>📦</span> Orders Telemetry ({orders.length})
         </button>
       </div>
 
-      {/* TAB 1: OVERVIEW */}
+      {/* TAB 1: OVERVIEW - Clean Vertical Layout */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl">
-                📦
+          {/* Vertical Stacked Overview Items */}
+          <div className="flex flex-col space-y-3.5">
+            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl flex-shrink-0">
+                  📦
+                </div>
+                <div>
+                  <p className="text-choco-500 text-xs font-medium">Total Orders</p>
+                  <p className="font-display text-2xl font-bold text-choco-900">{stats?.totalOrders || orders.length || 0}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-choco-500 text-xs font-medium">Total Orders</p>
-                <p className="font-display text-2xl font-bold text-choco-900">{stats?.totalOrders || orders.length || 0}</p>
-              </div>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-blue-700 hidden sm:inline-block">
+                All-time Orders
+              </span>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl">
-                💰
+            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl flex-shrink-0">
+                  💰
+                </div>
+                <div>
+                  <p className="text-choco-500 text-xs font-medium">Total Revenue</p>
+                  <p className="font-display text-2xl font-bold text-choco-900">
+                    ₹{stats?.totalRevenue?.toLocaleString('en-IN') || 0}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-choco-500 text-xs font-medium">Total Revenue</p>
-                <p className="font-display text-2xl font-bold text-choco-900">
-                  ₹{stats?.totalRevenue?.toLocaleString('en-IN') || 0}
-                </p>
-              </div>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 hidden sm:inline-block">
+                Gross Earnings
+              </span>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl">
-                ⏳
+            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl flex-shrink-0">
+                  ⏳
+                </div>
+                <div>
+                  <p className="text-choco-500 text-xs font-medium">Pending Orders</p>
+                  <p className="font-display text-2xl font-bold text-choco-900">{stats?.pendingOrders || 0}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-choco-500 text-xs font-medium">Pending Orders</p>
-                <p className="font-display text-2xl font-bold text-choco-900">{stats?.pendingOrders || 0}</p>
-              </div>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-amber-50 text-amber-700 hidden sm:inline-block">
+                Needs Attention
+              </span>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl">
-                👥
+            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl flex-shrink-0">
+                  👥
+                </div>
+                <div>
+                  <p className="text-choco-500 text-xs font-medium">Customers</p>
+                  <p className="font-display text-2xl font-bold text-choco-900">{stats?.totalCustomers || stats?.totalUsers || 0}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-choco-500 text-xs font-medium">Customers</p>
-                <p className="font-display text-2xl font-bold text-choco-900">{stats?.totalCustomers || 0}</p>
-              </div>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-purple-50 text-purple-700 hidden sm:inline-block">
+                Registered Users
+              </span>
             </div>
           </div>
 
+          {/* Quick Store Actions - Vertical Stack */}
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-choco-100">
             <h3 className="font-display text-lg font-bold text-choco-900 mb-3">⚡ Quick Store Actions</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="flex flex-col space-y-3">
               <button
                 onClick={() => { setActiveTab('products'); handleOpenAddModal(); }}
-                className="btn-gold p-4 text-center text-sm font-semibold flex flex-col items-center gap-2"
+                className="btn-gold p-4 text-left text-sm font-semibold flex items-center gap-3.5 w-full justify-start rounded-2xl"
               >
-                <span className="text-2xl">🍫</span> Add New Chocolate Product
+                <span className="text-2xl">🍫</span>
+                <div>
+                  <p className="font-bold">Add New Chocolate Product</p>
+                  <p className="text-xs font-normal opacity-90">Create a new item, set pricing, shape options, and inventory stock</p>
+                </div>
               </button>
               <button
                 onClick={() => setActiveTab('whatsapp')}
-                className="btn-secondary p-4 text-center text-sm font-semibold flex flex-col items-center gap-2"
+                className="btn-secondary p-4 text-left text-sm font-semibold flex items-center gap-3.5 w-full justify-start rounded-2xl border border-choco-200"
               >
-                <span className="text-2xl">📱</span> Configure WhatsApp Mobile Number
+                <span className="text-2xl">📱</span>
+                <div>
+                  <p className="font-bold">Configure WhatsApp Mobile Number</p>
+                  <p className="text-xs font-normal text-choco-600">Update destination mobile number for customer inquiries and orders</p>
+                </div>
               </button>
               <button
                 onClick={() => setActiveTab('orders')}
-                className="btn-primary p-4 text-center text-sm font-semibold flex flex-col items-center gap-2"
+                className="btn-primary p-4 text-left text-sm font-semibold flex items-center gap-3.5 w-full justify-start rounded-2xl"
               >
-                <span className="text-2xl">📦</span> Review Customer Orders
+                <span className="text-2xl">📦</span>
+                <div>
+                  <p className="font-bold">Review Customer Orders</p>
+                  <p className="text-xs font-normal text-choco-200">Track order statuses, customer addresses, and order delivery</p>
+                </div>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 2: MANAGE CHOCOLATES */}
+      {/* TAB 2: MANAGE CHOCOLATES - Vertical Layout */}
       {activeTab === 'products' && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-choco-100 shadow-sm">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm">
             <div>
               <h2 className="font-display text-xl font-bold text-choco-900">Chocolate Catalog ({products.length})</h2>
-              <p className="text-choco-500 text-xs">Add, edit prices, stock, or remove chocolates</p>
+              <p className="text-choco-500 text-xs">Add, edit prices, stock, shape options, or remove chocolates</p>
             </div>
-            <button onClick={handleOpenAddModal} className="btn-gold py-2.5 px-4 text-xs sm:text-sm font-semibold flex items-center gap-1.5">
+            <button onClick={handleOpenAddModal} className="btn-gold py-2.5 px-4 text-xs sm:text-sm font-semibold flex items-center gap-1.5 w-full sm:w-auto justify-center">
               ✨ Add New Chocolate
             </button>
           </div>
 
-          <div className="bg-white rounded-2xl border border-choco-100 shadow-sm overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-choco-50 text-choco-700 text-xs font-semibold uppercase tracking-wider border-b border-choco-100">
-                  <th className="p-3.5">Chocolate</th>
-                  <th className="p-3.5">Category</th>
-                  <th className="p-3.5">Price</th>
-                  <th className="p-3.5">Stock</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-choco-100 text-sm">
-                {products.map((p) => (
-                  <tr key={p._id} className="hover:bg-choco-50/50 transition-colors">
-                    <td className="p-3.5 flex items-center gap-3">
-                      <img
-                        src={p.images?.[0] || 'https://images.unsplash.com/photo-1548907040-4baa42d10919?w=100&q=80'}
-                        alt={p.name}
-                        className="w-10 h-10 rounded-xl object-cover border border-choco-200"
-                      />
-                      <div>
-                        <p className="font-semibold text-choco-900 text-sm leading-tight">{p.name}</p>
-                        <p className="text-[11px] text-choco-400 truncate max-w-xs">{p.description}</p>
+          <div className="space-y-3">
+            {products.length === 0 ? (
+              <div className="bg-white p-12 rounded-3xl text-center border border-choco-100">
+                <span className="text-4xl block mb-2">🍫</span>
+                <p className="text-choco-600 font-medium">No chocolates in catalog yet.</p>
+              </div>
+            ) : (
+              products.map((p) => (
+                <div
+                  key={p._id}
+                  className="bg-white p-4 rounded-2xl border border-choco-100 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-choco-200 transition-colors"
+                >
+                  <div className="flex items-center gap-3.5 w-full sm:w-auto">
+                    <img
+                      src={p.images?.[0] || 'https://images.unsplash.com/photo-1548907040-4baa42d10919?w=100&q=80'}
+                      alt={p.name}
+                      className="w-14 h-14 rounded-xl object-cover border border-choco-200 flex-shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-semibold text-choco-900 text-sm">{p.name}</h4>
+                        <span className="badge bg-choco-100 text-choco-800 text-[11px]">
+                          {p.category === 'Bites' ? '🍬 Bites' : '🍫 Bar'}
+                        </span>
+                        {p.isFeatured && (
+                          <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                            ⭐ Featured
+                          </span>
+                        )}
+                        <button
+                          onClick={() => handleToggleProductAvailability(p)}
+                          className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full transition-colors ${
+                            p.isAvailable
+                              ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                              : 'text-gray-500 bg-gray-100 hover:bg-gray-200'
+                          }`}
+                          title="Click to toggle active status"
+                        >
+                          {p.isAvailable ? '✓ Active' : 'Hidden'}
+                        </button>
                       </div>
-                    </td>
-                    <td className="p-3.5">
-                      <span className="badge bg-choco-100 text-choco-800 text-xs">
-                        {p.category === 'Bites' ? '🍬 Bites' : '🍫 Bar'}
-                      </span>
-                    </td>
-                    <td className="p-3.5 font-bold text-choco-900 font-display">₹{p.price}</td>
-                    <td className="p-3.5">
-                      <span className={`font-semibold text-xs px-2 py-0.5 rounded-full ${p.stock > 10 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                        {p.stock} in stock
-                      </span>
-                    </td>
-                    <td className="p-3.5">
-                      {p.isAvailable ? (
-                        <span className="text-xs text-emerald-600 font-medium">✓ Active</span>
-                      ) : (
-                        <span className="text-xs text-red-500 font-medium">Hidden</span>
-                      )}
-                    </td>
-                    <td className="p-3.5 text-right space-x-2">
-                      <button
-                        onClick={() => handleOpenEditModal(p)}
-                        className="px-3 py-1.5 rounded-xl bg-choco-100 hover:bg-choco-200 text-choco-800 text-xs font-semibold transition-colors"
-                      >
-                        ✏️ Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProduct(p._id, p.name)}
-                        className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition-colors"
-                      >
-                        🗑️ Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <p className="text-xs text-choco-400 line-clamp-1 mt-0.5">{p.description}</p>
+                      <div className="flex items-center gap-3 mt-1 text-xs">
+                        <span className="font-bold text-choco-900 font-display text-base">₹{p.price}</span>
+                        <span className={`font-semibold text-[11px] px-2 py-0.5 rounded-full ${p.stock > 10 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                          {p.stock} in stock
+                        </span>
+                        {p.shapeOptions && p.shapeOptions.length > 0 && (
+                          <span className="text-[11px] text-choco-500 hidden sm:inline">
+                            Shapes: {p.shapeOptions.join(', ')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-t-0 pt-2.5 sm:pt-0 border-choco-50">
+                    <button
+                      onClick={() => handleOpenEditModal(p)}
+                      className="px-3.5 py-1.5 rounded-xl bg-choco-100 hover:bg-choco-200 text-choco-800 text-xs font-semibold transition-colors flex items-center gap-1"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteProduct(p._id, p.name)}
+                      className="px-3.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition-colors flex items-center gap-1"
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -448,12 +525,20 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* TAB 4: ORDERS TELEMETRY */}
+      {/* TAB 4: ORDERS TELEMETRY - Vertical Order Stack */}
       {activeTab === 'orders' && (
         <div className="space-y-4">
-          <div className="bg-white p-4 rounded-2xl border border-choco-100 shadow-sm">
-            <h2 className="font-display text-xl font-bold text-choco-900">Customer Orders ({orders.length})</h2>
-            <p className="text-choco-500 text-xs">Track order status and update customer order states</p>
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <h2 className="font-display text-xl font-bold text-choco-900">Customer Orders ({orders.length})</h2>
+              <p className="text-choco-500 text-xs">Track order status and update customer order states</p>
+            </div>
+            <button
+              onClick={fetchData}
+              className="btn-secondary text-xs py-2 px-3 flex items-center gap-1 self-end sm:self-auto"
+            >
+              <span>🔄</span> Refresh Orders
+            </button>
           </div>
 
           {orders.length === 0 ? (
@@ -462,40 +547,75 @@ export default function AdminDashboardPage() {
               <p className="text-choco-600 font-medium">No customer orders recorded yet.</p>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-choco-100 shadow-sm overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-choco-50 text-choco-700 text-xs font-semibold uppercase tracking-wider border-b border-choco-100">
-                    <th className="p-3.5">Order ID</th>
-                    <th className="p-3.5">Customer</th>
-                    <th className="p-3.5">Items</th>
-                    <th className="p-3.5">Total</th>
-                    <th className="p-3.5">Payment</th>
-                    <th className="p-3.5">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-choco-100 text-sm">
-                  {orders.map((o) => (
-                    <tr key={o._id} className="hover:bg-choco-50/50">
-                      <td className="p-3.5 font-mono text-xs font-semibold text-choco-700">#{o._id.slice(-6)}</td>
-                      <td className="p-3.5">
-                        <p className="font-semibold text-choco-900">{o.shippingAddress?.fullName || o.user?.name || 'Customer'}</p>
-                        <p className="text-[11px] text-choco-400">{o.shippingAddress?.phone || o.user?.phone || 'No Phone'}</p>
-                      </td>
-                      <td className="p-3.5 text-xs text-choco-700">
-                        {o.items?.map((it) => `${it.product?.name || 'Chocolate'} (x${it.quantity})`).join(', ')}
-                      </td>
-                      <td className="p-3.5 font-bold font-display text-choco-900">₹{o.totalAmount}</td>
-                      <td className="p-3.5">
-                        <span className="text-xs font-medium uppercase px-2 py-0.5 rounded-md bg-choco-100 text-choco-800">
-                          {o.paymentMethod || 'COD'}
+            <div className="space-y-3">
+              {orders.map((o) => {
+                const customerName =
+                  o.shippingAddress?.fullName ||
+                  o.deliveryAddress?.fullName ||
+                  o.guestCustomer?.name ||
+                  o.user?.name ||
+                  'Customer';
+                const customerPhone =
+                  o.shippingAddress?.phone ||
+                  o.deliveryAddress?.phone ||
+                  o.guestCustomer?.phone ||
+                  o.user?.phone ||
+                  'No Phone';
+                const location =
+                  o.shippingAddress?.city ||
+                  o.deliveryAddress?.city ||
+                  o.guestCustomer?.address?.city ||
+                  '';
+                const currentStatus = o.orderStatus || o.status || 'Pending';
+
+                return (
+                  <div
+                    key={o._id}
+                    className="bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm flex flex-col md:flex-row justify-between gap-4 hover:border-choco-200 transition-colors"
+                  >
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs font-bold text-choco-700 bg-choco-100 px-2.5 py-1 rounded-lg">
+                          #{o._id.slice(-6)}
                         </span>
-                      </td>
-                      <td className="p-3.5">
+                        <span className="text-xs font-medium uppercase px-2 py-0.5 rounded-md bg-choco-100 text-choco-800">
+                          {o.paymentInfo?.status || o.paymentMethod || 'COD'}
+                        </span>
+                        <span className="text-xs text-choco-400">
+                          {new Date(o.createdAt).toLocaleDateString('en-IN', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-choco-900 text-sm">{customerName}</p>
+                        <p className="text-xs text-choco-500">
+                          📱 {customerPhone} {location ? ` • ${location}` : ''}
+                        </p>
+                      </div>
+                      <div className="text-xs text-choco-700 bg-choco-50 p-2.5 rounded-xl">
+                        <span className="font-semibold text-choco-800">Items: </span>
+                        {o.items
+                          ?.map((it) => `${it.name || it.product?.name || 'Chocolate'} (x${it.quantity}${it.shape ? ` - ${it.shape}` : ''})`)
+                          .join(', ')}
+                      </div>
+                    </div>
+
+                    <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center gap-3 border-t md:border-t-0 pt-3 md:pt-0 border-choco-100">
+                      <div className="text-left md:text-right">
+                        <p className="text-[11px] text-choco-400">Total Amount</p>
+                        <p className="font-bold font-display text-lg sm:text-xl text-choco-900">₹{o.totalAmount}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-choco-500 hidden sm:inline">Status:</span>
                         <select
-                          value={o.status}
+                          value={currentStatus}
                           onChange={(e) => handleOrderStatusChange(o._id, e.target.value)}
-                          className="text-xs font-semibold p-1.5 rounded-xl border border-choco-200 bg-white text-choco-900 focus:outline-none"
+                          className="text-xs font-semibold p-2 rounded-xl border border-choco-200 bg-white text-choco-900 focus:outline-none cursor-pointer shadow-xs"
                         >
                           <option value="Pending">Pending</option>
                           <option value="Confirmed">Confirmed</option>
@@ -504,11 +624,11 @@ export default function AdminDashboardPage() {
                           <option value="Delivered">Delivered</option>
                           <option value="Cancelled">Cancelled</option>
                         </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -553,7 +673,14 @@ export default function AdminDashboardPage() {
                     <label className="label">Category *</label>
                     <select
                       value={productForm.category}
-                      onChange={(e) => setProductForm((p) => ({ ...p, category: e.target.value }))}
+                      onChange={(e) => {
+                        const newCat = e.target.value;
+                        setProductForm((p) => ({
+                          ...p,
+                          category: newCat,
+                          shapeOptions: newCat === 'Bites' ? [] : ['Normal', 'Heart'],
+                        }));
+                      }}
                       className="input-field"
                     >
                       <option value="Normal Shape or Heart">Normal Shape or Heart</option>
@@ -603,6 +730,28 @@ export default function AdminDashboardPage() {
                     placeholder="https://images.unsplash.com/photo-..."
                     className="input-field font-mono text-xs min-h-[70px]"
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-choco-800 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={productForm.isAvailable}
+                      onChange={(e) => setProductForm((p) => ({ ...p, isAvailable: e.target.checked }))}
+                      className="rounded border-choco-300 text-choco-800 focus:ring-choco-500 w-4 h-4"
+                    />
+                    ✓ Active in Store
+                  </label>
+
+                  <label className="flex items-center gap-2 text-xs font-semibold text-choco-800 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={productForm.isFeatured}
+                      onChange={(e) => setProductForm((p) => ({ ...p, isFeatured: e.target.checked }))}
+                      className="rounded border-choco-300 text-gold-500 focus:ring-gold-500 w-4 h-4"
+                    />
+                    ⭐ Featured Item
+                  </label>
                 </div>
 
                 <div className="flex gap-3 pt-4 border-t border-choco-100">

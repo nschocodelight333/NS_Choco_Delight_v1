@@ -23,7 +23,7 @@ function ProductsContent() {
   const [total, setTotal] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
 
-  const getFiltersFromUrl = () => ({
+  const getFiltersFromUrl = useCallback(() => ({
     search: searchParams.get('search') || '',
     category: searchParams.get('category') || '',
     minPrice: searchParams.get('minPrice') || '',
@@ -31,13 +31,14 @@ function ProductsContent() {
     rating: searchParams.get('rating') || '',
     sort: searchParams.get('sort') || 'newest',
     page: parseInt(searchParams.get('page') || '1') || 1,
-  });
+  }), [searchParams]);
 
   const [filters, setFilters] = useState(getFiltersFromUrl);
 
+  const searchParamsString = searchParams.toString();
   useEffect(() => {
     setFilters(getFiltersFromUrl());
-  }, [searchParams.toString()]);
+  }, [searchParamsString, getFiltersFromUrl]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
