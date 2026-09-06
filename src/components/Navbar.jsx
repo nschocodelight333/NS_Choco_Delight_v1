@@ -73,7 +73,7 @@ const Navbar = () => {
         { to: '/', label: 'Home' },
         { to: '/products', label: 'Shop' },
         ...(hasOccasions ? [{ to: '/special-occasions', label: '🎉 Special Occasions' }] : []),
-        { to: '/customize', label: '✨ Customize' },
+        { to: '/customize', label: 'Customize' },
         { to: '/about', label: 'About' },
         { to: '/contact', label: 'Contact' },
       ];
