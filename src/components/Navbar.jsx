@@ -220,18 +220,18 @@ const Navbar = () => {
                 </AnimatePresence>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2">
                 <Link
                   href="/login"
                   id="nav-login-btn"
-                  className="px-4 py-2 text-sm font-semibold text-choco-800 hover:bg-choco-50 rounded-xl transition-all duration-200"
+                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-choco-800 hover:bg-choco-50 rounded-xl transition-all duration-200 whitespace-nowrap"
                 >
                   Login
                 </Link>
                 <Link
                   href="/register"
                   id="nav-register-btn"
-                  className="btn-primary py-2 px-4 text-sm font-semibold shadow-xs"
+                  className="btn-primary py-1.5 sm:py-2 px-3 sm:px-4 text-xs sm:text-sm font-semibold shadow-xs whitespace-nowrap"
                 >
                   Sign Up
                 </Link>
