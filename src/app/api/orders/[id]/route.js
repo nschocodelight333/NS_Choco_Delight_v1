@@ -57,7 +57,9 @@ export async function PUT(req, { params }) {
 
     await connectDB();
     const { id } = params;
-    const { orderStatus, paymentStatus } = await req.json();
+    const body = await req.json();
+    const orderStatus = body.orderStatus || body.status;
+    const paymentStatus = body.paymentStatus || body.paymentInfo?.status;
 
     const order = await Order.findById(id);
     if (!order) {
@@ -68,7 +70,9 @@ export async function PUT(req, { params }) {
     }
 
     if (orderStatus) order.orderStatus = orderStatus;
-    if (paymentStatus) order.paymentInfo.status = paymentStatus;
+    if (paymentStatus && order.paymentInfo) {
+      order.paymentInfo.status = paymentStatus;
+    }
 
     await order.save();
 

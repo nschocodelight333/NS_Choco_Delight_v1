@@ -217,7 +217,12 @@ export async function GET(req) {
       await Product.insertMany(ORIGINAL_PRODUCTS);
     }
 
-    let query = { isAvailable: true };
+    const all = searchParams.get('all');
+
+    let query = {};
+    if (all !== 'true') {
+      query.isAvailable = true;
+    }
 
     if (category) {
       query.category = category;

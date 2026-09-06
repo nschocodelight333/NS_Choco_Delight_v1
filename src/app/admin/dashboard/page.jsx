@@ -34,6 +34,8 @@ export default function AdminDashboardPage() {
     description: '',
     images: '',
     shapeOptions: ['Normal', 'Heart'],
+    isAvailable: true,
+    isFeatured: false,
   });
   const [savingProduct, setSavingProduct] = useState(false);
 
@@ -58,7 +60,7 @@ export default function AdminDashboardPage() {
     try {
       const [statsRes, prodRes, ordersRes] = await Promise.allSettled([
         getDashboardStats(),
-        api.get('/products'),
+        api.get('/products?all=true'),
         api.get('/admin/orders'),
       ]);
 
@@ -67,6 +69,7 @@ export default function AdminDashboardPage() {
       if (ordersRes.status === 'fulfilled') setOrders(ordersRes.value.data.orders || []);
     } catch (e) {
       console.error(e);
+      toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -84,7 +87,6 @@ export default function AdminDashboardPage() {
     }
   };
 
-
   const handleOpenAddModal = () => {
     setEditingProduct(null);
     setProductForm({
@@ -95,6 +97,8 @@ export default function AdminDashboardPage() {
       description: '',
       images: '',
       shapeOptions: ['Normal', 'Heart'],
+      isAvailable: true,
+      isFeatured: false,
     });
     setShowProductModal(true);
   };
@@ -108,9 +112,24 @@ export default function AdminDashboardPage() {
       stock: prod.stock,
       description: prod.description || '',
       images: prod.images?.join('\n') || '',
-      shapeOptions: prod.shapeOptions || ['Normal', 'Heart'],
+      shapeOptions: prod.shapeOptions || (prod.category === 'Bites' ? [] : ['Normal', 'Heart']),
+      isAvailable: prod.isAvailable !== false,
+      isFeatured: prod.isFeatured === true,
     });
     setShowProductModal(true);
+  };
+
+  const handleToggleProductAvailability = async (prod) => {
+    const updatedStatus = !prod.isAvailable;
+    try {
+      await api.put(`/products/${prod._id}`, { isAvailable: updatedStatus });
+      toast.success(`${prod.name} is now ${updatedStatus ? 'Active' : 'Hidden'}!`);
+      setProducts((prev) =>
+        prev.map((p) => (p._id === prod._id ? { ...p, isAvailable: updatedStatus } : p))
+      );
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update availability');
+    }
   };
 
   const handleDeleteProduct = async (id, name) => {
@@ -137,7 +156,9 @@ export default function AdminDashboardPage() {
         images: productForm.images
           ? productForm.images.split('\n').map((url) => url.trim()).filter(Boolean)
           : ['https://images.unsplash.com/photo-1548907040-4baa42d10919?w=800&q=80'],
-        shapeOptions: productForm.shapeOptions,
+        shapeOptions: productForm.category === 'Bites' ? [] : productForm.shapeOptions,
+        isAvailable: productForm.isAvailable,
+        isFeatured: productForm.isFeatured,
       };
 
       if (editingProduct) {
@@ -159,10 +180,12 @@ export default function AdminDashboardPage() {
 
   const handleOrderStatusChange = async (orderId, newStatus) => {
     try {
-      await api.put(`/orders/${orderId}`, { status: newStatus });
+      await api.put(`/orders/${orderId}`, { orderStatus: newStatus, status: newStatus });
       toast.success(`Order status updated to "${newStatus}"! 📦`);
       setOrders((prev) =>
-        prev.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o))
+        prev.map((o) =>
+          o._id === orderId ? { ...o, orderStatus: newStatus, status: newStatus } : o
+        )
       );
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update order status');
@@ -191,12 +214,22 @@ export default function AdminDashboardPage() {
           </p>
         </div>
 
-        <Link
-          href="/"
-          className="btn-secondary text-xs sm:text-sm py-2 px-4 flex items-center gap-1.5"
-        >
-          🌐 Back to Public Store
-        </Link>
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="btn-secondary text-xs sm:text-sm py-2 px-3.5 flex items-center gap-1.5"
+            title="Reload telemetry data"
+          >
+            <span className={loading ? 'animate-spin' : ''}>🔄</span> {loading ? 'Syncing...' : 'Refresh'}
+          </button>
+          <Link
+            href="/"
+            className="btn-secondary text-xs sm:text-sm py-2 px-4 flex items-center gap-1.5"
+          >
+            🌐 View Store
+          </Link>
+        </div>
       </div>
 
       {/* Admin Tabs - Vertical on mobile, responsive grid, no horizontal scroll */}
@@ -302,7 +335,7 @@ export default function AdminDashboardPage() {
                 </div>
                 <div>
                   <p className="text-choco-500 text-xs font-medium">Customers</p>
-                  <p className="font-display text-2xl font-bold text-choco-900">{stats?.totalCustomers || 0}</p>
+                  <p className="font-display text-2xl font-bold text-choco-900">{stats?.totalCustomers || stats?.totalUsers || 0}</p>
                 </div>
               </div>
               <span className="text-xs font-semibold px-3 py-1 rounded-full bg-purple-50 text-purple-700 hidden sm:inline-block">
@@ -356,7 +389,7 @@ export default function AdminDashboardPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm">
             <div>
               <h2 className="font-display text-xl font-bold text-choco-900">Chocolate Catalog ({products.length})</h2>
-              <p className="text-choco-500 text-xs">Add, edit prices, stock, or remove chocolates</p>
+              <p className="text-choco-500 text-xs">Add, edit prices, stock, shape options, or remove chocolates</p>
             </div>
             <button onClick={handleOpenAddModal} className="btn-gold py-2.5 px-4 text-xs sm:text-sm font-semibold flex items-center gap-1.5 w-full sm:w-auto justify-center">
               ✨ Add New Chocolate
@@ -387,11 +420,22 @@ export default function AdminDashboardPage() {
                         <span className="badge bg-choco-100 text-choco-800 text-[11px]">
                           {p.category === 'Bites' ? '🍬 Bites' : '🍫 Bar'}
                         </span>
-                        {p.isAvailable ? (
-                          <span className="text-[11px] text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full">✓ Active</span>
-                        ) : (
-                          <span className="text-[11px] text-red-500 font-medium bg-red-50 px-2 py-0.5 rounded-full">Hidden</span>
+                        {p.isFeatured && (
+                          <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                            ⭐ Featured
+                          </span>
                         )}
+                        <button
+                          onClick={() => handleToggleProductAvailability(p)}
+                          className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full transition-colors ${
+                            p.isAvailable
+                              ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                              : 'text-gray-500 bg-gray-100 hover:bg-gray-200'
+                          }`}
+                          title="Click to toggle active status"
+                        >
+                          {p.isAvailable ? '✓ Active' : 'Hidden'}
+                        </button>
                       </div>
                       <p className="text-xs text-choco-400 line-clamp-1 mt-0.5">{p.description}</p>
                       <div className="flex items-center gap-3 mt-1 text-xs">
@@ -399,6 +443,11 @@ export default function AdminDashboardPage() {
                         <span className={`font-semibold text-[11px] px-2 py-0.5 rounded-full ${p.stock > 10 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
                           {p.stock} in stock
                         </span>
+                        {p.shapeOptions && p.shapeOptions.length > 0 && (
+                          <span className="text-[11px] text-choco-500 hidden sm:inline">
+                            Shapes: {p.shapeOptions.join(', ')}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -479,9 +528,17 @@ export default function AdminDashboardPage() {
       {/* TAB 4: ORDERS TELEMETRY - Vertical Order Stack */}
       {activeTab === 'orders' && (
         <div className="space-y-4">
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm">
-            <h2 className="font-display text-xl font-bold text-choco-900">Customer Orders ({orders.length})</h2>
-            <p className="text-choco-500 text-xs">Track order status and update customer order states</p>
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <h2 className="font-display text-xl font-bold text-choco-900">Customer Orders ({orders.length})</h2>
+              <p className="text-choco-500 text-xs">Track order status and update customer order states</p>
+            </div>
+            <button
+              onClick={fetchData}
+              className="btn-secondary text-xs py-2 px-3 flex items-center gap-1 self-end sm:self-auto"
+            >
+              <span>🔄</span> Refresh Orders
+            </button>
           </div>
 
           {orders.length === 0 ? (
@@ -491,67 +548,87 @@ export default function AdminDashboardPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {orders.map((o) => (
-                <div
-                  key={o._id}
-                  className="bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm flex flex-col md:flex-row justify-between gap-4 hover:border-choco-200 transition-colors"
-                >
-                  <div className="space-y-2 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-xs font-bold text-choco-700 bg-choco-100 px-2.5 py-1 rounded-lg">
-                        #{o._id.slice(-6)}
-                      </span>
-                      <span className="text-xs font-medium uppercase px-2 py-0.5 rounded-md bg-choco-100 text-choco-800">
-                        {o.paymentMethod || 'COD'}
-                      </span>
-                      <span className="text-xs text-choco-400">
-                        {new Date(o.createdAt).toLocaleDateString('en-IN', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-choco-900 text-sm">
-                        {o.shippingAddress?.fullName || o.user?.name || 'Customer'}
-                      </p>
-                      <p className="text-xs text-choco-500">
-                        📱 {o.shippingAddress?.phone || o.user?.phone || 'No Phone'}
-                        {o.shippingAddress?.city ? ` • ${o.shippingAddress.city}, ${o.shippingAddress.state || ''}` : ''}
-                      </p>
-                    </div>
-                    <div className="text-xs text-choco-700 bg-choco-50 p-2.5 rounded-xl">
-                      <span className="font-semibold text-choco-800">Items: </span>
-                      {o.items?.map((it) => `${it.product?.name || 'Chocolate'} (x${it.quantity})`).join(', ')}
-                    </div>
-                  </div>
+              {orders.map((o) => {
+                const customerName =
+                  o.shippingAddress?.fullName ||
+                  o.deliveryAddress?.fullName ||
+                  o.guestCustomer?.name ||
+                  o.user?.name ||
+                  'Customer';
+                const customerPhone =
+                  o.shippingAddress?.phone ||
+                  o.deliveryAddress?.phone ||
+                  o.guestCustomer?.phone ||
+                  o.user?.phone ||
+                  'No Phone';
+                const location =
+                  o.shippingAddress?.city ||
+                  o.deliveryAddress?.city ||
+                  o.guestCustomer?.address?.city ||
+                  '';
+                const currentStatus = o.orderStatus || o.status || 'Pending';
 
-                  <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center gap-3 border-t md:border-t-0 pt-3 md:pt-0 border-choco-100">
-                    <div className="text-left md:text-right">
-                      <p className="text-[11px] text-choco-400">Total Amount</p>
-                      <p className="font-bold font-display text-lg sm:text-xl text-choco-900">₹{o.totalAmount}</p>
+                return (
+                  <div
+                    key={o._id}
+                    className="bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm flex flex-col md:flex-row justify-between gap-4 hover:border-choco-200 transition-colors"
+                  >
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs font-bold text-choco-700 bg-choco-100 px-2.5 py-1 rounded-lg">
+                          #{o._id.slice(-6)}
+                        </span>
+                        <span className="text-xs font-medium uppercase px-2 py-0.5 rounded-md bg-choco-100 text-choco-800">
+                          {o.paymentInfo?.status || o.paymentMethod || 'COD'}
+                        </span>
+                        <span className="text-xs text-choco-400">
+                          {new Date(o.createdAt).toLocaleDateString('en-IN', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-choco-900 text-sm">{customerName}</p>
+                        <p className="text-xs text-choco-500">
+                          📱 {customerPhone} {location ? ` • ${location}` : ''}
+                        </p>
+                      </div>
+                      <div className="text-xs text-choco-700 bg-choco-50 p-2.5 rounded-xl">
+                        <span className="font-semibold text-choco-800">Items: </span>
+                        {o.items
+                          ?.map((it) => `${it.name || it.product?.name || 'Chocolate'} (x${it.quantity}${it.shape ? ` - ${it.shape}` : ''})`)
+                          .join(', ')}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-choco-500 hidden sm:inline">Status:</span>
-                      <select
-                        value={o.status}
-                        onChange={(e) => handleOrderStatusChange(o._id, e.target.value)}
-                        className="text-xs font-semibold p-2 rounded-xl border border-choco-200 bg-white text-choco-900 focus:outline-none cursor-pointer shadow-xs"
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="Confirmed">Confirmed</option>
-                        <option value="Preparing">Preparing</option>
-                        <option value="Out for Delivery">Out for Delivery</option>
-                        <option value="Delivered">Delivered</option>
-                        <option value="Cancelled">Cancelled</option>
-                      </select>
+
+                    <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center gap-3 border-t md:border-t-0 pt-3 md:pt-0 border-choco-100">
+                      <div className="text-left md:text-right">
+                        <p className="text-[11px] text-choco-400">Total Amount</p>
+                        <p className="font-bold font-display text-lg sm:text-xl text-choco-900">₹{o.totalAmount}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-choco-500 hidden sm:inline">Status:</span>
+                        <select
+                          value={currentStatus}
+                          onChange={(e) => handleOrderStatusChange(o._id, e.target.value)}
+                          className="text-xs font-semibold p-2 rounded-xl border border-choco-200 bg-white text-choco-900 focus:outline-none cursor-pointer shadow-xs"
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Confirmed">Confirmed</option>
+                          <option value="Preparing">Preparing</option>
+                          <option value="Out for Delivery">Out for Delivery</option>
+                          <option value="Delivered">Delivered</option>
+                          <option value="Cancelled">Cancelled</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -596,7 +673,14 @@ export default function AdminDashboardPage() {
                     <label className="label">Category *</label>
                     <select
                       value={productForm.category}
-                      onChange={(e) => setProductForm((p) => ({ ...p, category: e.target.value }))}
+                      onChange={(e) => {
+                        const newCat = e.target.value;
+                        setProductForm((p) => ({
+                          ...p,
+                          category: newCat,
+                          shapeOptions: newCat === 'Bites' ? [] : ['Normal', 'Heart'],
+                        }));
+                      }}
                       className="input-field"
                     >
                       <option value="Normal Shape or Heart">Normal Shape or Heart</option>
@@ -646,6 +730,28 @@ export default function AdminDashboardPage() {
                     placeholder="https://images.unsplash.com/photo-..."
                     className="input-field font-mono text-xs min-h-[70px]"
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-choco-800 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={productForm.isAvailable}
+                      onChange={(e) => setProductForm((p) => ({ ...p, isAvailable: e.target.checked }))}
+                      className="rounded border-choco-300 text-choco-800 focus:ring-choco-500 w-4 h-4"
+                    />
+                    ✓ Active in Store
+                  </label>
+
+                  <label className="flex items-center gap-2 text-xs font-semibold text-choco-800 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={productForm.isFeatured}
+                      onChange={(e) => setProductForm((p) => ({ ...p, isFeatured: e.target.checked }))}
+                      className="rounded border-choco-300 text-gold-500 focus:ring-gold-500 w-4 h-4"
+                    />
+                    ⭐ Featured Item
+                  </label>
                 </div>
 
                 <div className="flex gap-3 pt-4 border-t border-choco-100">
