@@ -1,6 +1,6 @@
 export const getImageUrl = (url) => {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
     return url;
   }
   let normalized = url.replace(/\\/g, '/');
