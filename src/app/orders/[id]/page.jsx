@@ -87,12 +87,6 @@ export default function OrderDetailsPage() {
           </span>
         </div>
 
-        <div className="bg-choco-50 rounded-xl p-4 mb-6">
-          <p className="text-choco-500 text-xs">Order ID</p>
-          <p className="font-mono font-bold text-choco-900">{order._id}</p>
-          <p className="text-choco-400 text-xs mt-1">
-            {new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'long' })}
-          </p>
         <div className="bg-choco-50 rounded-2xl p-4 sm:p-5 mb-6 border border-choco-100 space-y-3">
           <div className="flex justify-between items-start flex-wrap gap-2">
             <div>

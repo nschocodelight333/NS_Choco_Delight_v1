@@ -18,11 +18,8 @@ export async function GET(req) {
     }
 
     await connectDB();
-    const orders = await Order.find({ user: user._id }).sort({ createdAt: -1 });
-    const orders = await Order.find({ user: user._id }).sort({ createdAt: -1 }).lean();
     const rawOrders = await Order.find({ user: user._id }).sort({ createdAt: -1 }).lean();
 
-    const normalizedOrders = orders.map((order) => {
     const normalizedOrders = rawOrders.map((order) => {
       const isTakeaway = Boolean(
         order.orderType === 'takeaway' ||
@@ -39,7 +36,6 @@ export async function GET(req) {
 
     return NextResponse.json({
       success: true,
-      orders,
       orders: normalizedOrders,
     });
   } catch (error) {
@@ -126,7 +122,6 @@ export async function POST(req) {
       ? totalAmount
       : (finalItemsTotal + finalDeliveryFee);
 
-    const paymentStatus = (paymentMethod === 'cod' || paymentMethod === 'takeaway' || isTakeaway)
     const effectivePaymentMethod = (paymentMethod === 'takeaway' || isTakeaway)
       ? 'cod'
       : (paymentMethod || 'cod');

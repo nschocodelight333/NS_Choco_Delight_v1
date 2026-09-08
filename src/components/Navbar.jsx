@@ -176,30 +176,22 @@ const Navbar = () => {
                           >
                             👑 Admin Dashboard
                           </Link>
-                          <button
-                            onClick={handleOpenProfileModal}
-                            className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-choco-700 hover:bg-choco-50"
                           <Link
                             href="/profile"
                             onClick={() => setUserMenuOpen(false)}
                             className="flex items-center gap-2 px-4 py-2 text-sm text-choco-700 hover:bg-choco-50"
                           >
                             👤 Admin Profile & Phone
-                          </button>
                           </Link>
                         </>
                       ) : (
                         <>
-                          <button
-                            onClick={handleOpenProfileModal}
-                            className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-choco-700 hover:bg-choco-50"
                           <Link
                             href="/profile"
                             onClick={() => setUserMenuOpen(false)}
                             className="flex items-center gap-2 px-4 py-2 text-sm text-choco-700 hover:bg-choco-50"
                           >
                             👤 My Profile & Phone
-                          </button>
                           </Link>
                           <Link
                             href="/orders"
@@ -302,13 +294,11 @@ const Navbar = () => {
       {/* EDIT PROFILE MODAL */}
       <AnimatePresence>
         {showProfileModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4"
               className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center border-b border-choco-100 pb-3">

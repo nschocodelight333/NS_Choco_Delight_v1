@@ -251,7 +251,6 @@ export default function CheckoutPage() {
                 {isTakeaway ? '🛍️ Pickup Details' : '📍 Delivery Address'}
               </h2>
 
-              {!isTakeaway && (
               {isTakeaway ? (
                 <div className="space-y-4">
                   <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-950 space-y-1.5">
@@ -338,8 +337,6 @@ export default function CheckoutPage() {
                         value={address.phone}
                         onChange={handleAddressChange}
                         placeholder="10-digit mobile"
-                        maxLength={10}
-                        className="input-field text-sm"
                         maxLength={15}
                         className="input-field text-sm font-mono"
                         required
