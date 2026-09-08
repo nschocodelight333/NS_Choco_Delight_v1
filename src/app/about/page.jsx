@@ -40,8 +40,8 @@ export default function AboutPage() {
               {[
                 { num: '16+', label: 'Unique Flavors' },
                 { num: '100%', label: 'Homemade' },
-                { num: '500+', label: 'Happy Customers' },
-                { num: '5⭐', label: 'Rated' },
+                { num: 'Fresh', label: 'Made to Order' },
+                { num: 'Custom', label: 'Special Occasions' },
               ].map((item) => (
                 <div key={item.label} className="bg-white/10 rounded-2xl p-4">
                   <p className="font-display text-3xl font-bold text-gold-400">{item.num}</p>
