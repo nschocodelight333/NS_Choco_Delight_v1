@@ -63,14 +63,26 @@ export default function OrdersPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <span className={STATUS_COLORS[order.orderStatus] || 'badge bg-gray-100 text-gray-700'}>
                         {order.orderStatus}
                       </span>
                       {order.paymentInfo?.status === 'paid' && (
                         <span className="badge bg-green-100 text-green-700">✓ Paid</span>
                       )}
+                      <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-choco-100 text-choco-800">
+                        {(order.orderType === 'takeaway' || order.isTakeaway) ? '🛍️ Take-away' : '🚚 Delivery'}
+                      </span>
+                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        {order.paymentMethod === 'online' ? 'Online Paid' : 'Cash on Delivery'}
+                      </span>
                     </div>
                     <p className="text-xs text-choco-400 font-mono mb-1">#{order._id.slice(-8).toUpperCase()}</p>
+                    <div className="flex items-center gap-2 text-xs text-choco-400 font-mono mb-1">
+                      <span>#{order._id.slice(-8).toUpperCase()}</span>
+                      <span>•</span>
+                      <span>{new Date(order.createdAt).toLocaleDateString()}</span>
+                    </div>
                     <p className="text-choco-700 text-sm">
                       {order.items?.length || 0} item{(order.items?.length || 0) > 1 ? 's' : ''} —{' '}
                       <span className="font-semibold text-choco-900">₹{order.totalAmount}</span>

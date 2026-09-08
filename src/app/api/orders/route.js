@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Order from '@/models/Order';
@@ -18,10 +19,26 @@ export async function GET(req) {
 
     await connectDB();
     const orders = await Order.find({ user: user._id }).sort({ createdAt: -1 });
+    const orders = await Order.find({ user: user._id }).sort({ createdAt: -1 }).lean();
+
+    const normalizedOrders = orders.map((order) => {
+      const isTakeaway = Boolean(
+        order.orderType === 'takeaway' ||
+        order.deliveryAddress?.isTakeaway ||
+        order.paymentMethod === 'takeaway' ||
+        order.paymentInfo?.paymentMethod === 'takeaway'
+      );
+      return {
+        ...order,
+        orderType: isTakeaway ? 'takeaway' : 'delivery',
+        paymentMethod: order.paymentMethod === 'takeaway' ? 'cod' : (order.paymentMethod || order.paymentInfo?.status || 'cod'),
+      };
+    });
 
     return NextResponse.json({
       success: true,
       orders,
+      orders: normalizedOrders,
     });
   } catch (error) {
     return NextResponse.json(
@@ -108,6 +125,11 @@ export async function POST(req) {
       : (finalItemsTotal + finalDeliveryFee);
 
     const paymentStatus = (paymentMethod === 'cod' || paymentMethod === 'takeaway' || isTakeaway)
+    const effectivePaymentMethod = (paymentMethod === 'takeaway' || isTakeaway)
+      ? 'cod'
+      : (paymentMethod || 'cod');
+
+    const paymentStatus = (effectivePaymentMethod === 'cod' || isTakeaway)
       ? 'cod'
       : (paymentInfo?.status || 'pending');
 
@@ -120,6 +142,8 @@ export async function POST(req) {
       deliveryFee: finalDeliveryFee,
       totalAmount: finalTotalAmount,
       notes: notes || '',
+      orderType: isTakeaway ? 'takeaway' : 'delivery',
+      paymentMethod: effectivePaymentMethod,
       paymentInfo: {
         status: paymentStatus,
         razorpayOrderId: paymentInfo?.razorpayOrderId || '',

@@ -15,11 +15,27 @@ export default function AdminDashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState('overview'); // overview | products | whatsapp | orders
+  // Navigation tabs: overview | products | whatsapp | orders | customers
+  const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState(null);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Orders Filters & Search
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState('all');
+  const [orderTypeFilter, setOrderTypeFilter] = useState('all');
+  const [orderSort, setOrderSort] = useState('newest');
+
+  // Customer Drilldown & Search
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerSort, setCustomerSort] = useState('orders_desc');
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customerOrders, setCustomerOrders] = useState([]);
+  const [customerReviews, setCustomerReviews] = useState([]);
+  const [loadingCustomerDetails, setLoadingCustomerDetails] = useState(false);
 
   // WhatsApp store number
   const [whatsappNum, setWhatsappNumState] = useState('');
@@ -52,7 +68,6 @@ export default function AdminDashboardPage() {
         router.replace('/admin/login');
         return;
       }
-      // Load stored whatsapp number
       setWhatsappNumState(getWhatsAppNumber());
       fetchStoreWhatsAppNumber().then((num) => {
         if (num) setWhatsappNumState(num);
@@ -64,21 +79,56 @@ export default function AdminDashboardPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [statsRes, prodRes, ordersRes] = await Promise.allSettled([
+      const [statsRes, prodRes, ordersRes, usersRes] = await Promise.allSettled([
         getDashboardStats(),
         api.get('/products?all=true'),
         api.get('/admin/orders'),
+        api.get('/admin/users'),
       ]);
 
       if (statsRes.status === 'fulfilled') setStats(statsRes.value.data.stats);
       if (prodRes.status === 'fulfilled') setProducts(prodRes.value.data.products || []);
       if (ordersRes.status === 'fulfilled') setOrders(ordersRes.value.data.orders || []);
+      if (usersRes.status === 'fulfilled') setCustomers(usersRes.value.data.users || []);
     } catch (e) {
       console.error(e);
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadCustomerDrilldown = async (customerId, customerObj = null) => {
+    setLoadingCustomerDetails(true);
+    try {
+      const res = await api.get(`/admin/users?userId=${customerId}`);
+      if (res.data?.success) {
+        setSelectedCustomer(res.data.user);
+        setCustomerOrders(res.data.orders || []);
+        setCustomerReviews(res.data.reviews || []);
+      } else if (customerObj) {
+        setSelectedCustomer(customerObj);
+        // Fallback filter from loaded orders
+        const filtered = orders.filter((o) => o.user?._id === customerId || o.user === customerId);
+        setCustomerOrders(filtered);
+      }
+    } catch (err) {
+      console.error('Error fetching customer details:', err);
+      if (customerObj) {
+        setSelectedCustomer(customerObj);
+        const filtered = orders.filter((o) => o.user?._id === customerId || o.user === customerId);
+        setCustomerOrders(filtered);
+      } else {
+        toast.error('Could not load detailed customer history');
+      }
+    } finally {
+      setLoadingCustomerDetails(false);
+    }
+  };
+
+  const handleOpenCustomerDrilldown = (customer) => {
+    setActiveTab('customers');
+    loadCustomerDrilldown(customer._id || customer.id, customer);
   };
 
   const handleSaveWhatsAppNumber = async (e) => {
@@ -151,7 +201,7 @@ export default function AdminDashboardPage() {
             continue;
           }
         } catch (uploadErr) {
-          console.warn('API upload fallback to local canvas compression:', uploadErr);
+          console.warn('API upload fallback to local compression:', uploadErr);
         }
 
         const compressed = await compressImage(file);
@@ -316,6 +366,70 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Filtered Orders Logic
+  const filteredOrders = orders
+    .filter((o) => {
+      if (orderStatusFilter !== 'all') {
+        const current = (o.orderStatus || o.status || 'Pending').toLowerCase();
+        if (current !== orderStatusFilter.toLowerCase()) return false;
+      }
+      if (orderTypeFilter !== 'all') {
+        const oType = (o.orderType || (o.isTakeaway ? 'takeaway' : 'delivery')).toLowerCase();
+        if (oType !== orderTypeFilter.toLowerCase()) return false;
+      }
+      if (orderSearch.trim()) {
+        const q = orderSearch.toLowerCase().trim();
+        const idMatch = o._id.toLowerCase().includes(q);
+        const nameMatch = (
+          o.shippingAddress?.fullName ||
+          o.deliveryAddress?.fullName ||
+          o.guestCustomer?.name ||
+          o.user?.name ||
+          ''
+        ).toLowerCase().includes(q);
+        const phoneMatch = (
+          o.shippingAddress?.phone ||
+          o.deliveryAddress?.phone ||
+          o.guestCustomer?.phone ||
+          o.user?.phone ||
+          ''
+        ).toLowerCase().includes(q);
+        const emailMatch = (o.user?.email || o.guestCustomer?.email || '').toLowerCase().includes(q);
+        const productMatch = o.items?.some((it) =>
+          (it.name || it.product?.name || '').toLowerCase().includes(q)
+        );
+        return idMatch || nameMatch || phoneMatch || emailMatch || productMatch;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (orderSort === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
+      if (orderSort === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+      if (orderSort === 'amount_desc') return (b.totalAmount || 0) - (a.totalAmount || 0);
+      if (orderSort === 'amount_asc') return (a.totalAmount || 0) - (b.totalAmount || 0);
+      return 0;
+    });
+
+  // Filtered Customers Logic
+  const filteredCustomers = customers
+    .filter((c) => {
+      if (!customerSearch.trim()) return true;
+      const q = customerSearch.toLowerCase().trim();
+      const name = (c.name || '').toLowerCase();
+      const email = (c.email || '').toLowerCase();
+      const phone = (c.phone || '').toLowerCase();
+      return name.includes(q) || email.includes(q) || phone.includes(q);
+    })
+    .sort((a, b) => {
+      if (customerSort === 'orders_desc') return (b.totalOrders || 0) - (a.totalOrders || 0);
+      if (customerSort === 'spent_desc') return (b.totalSpent || 0) - (a.totalSpent || 0);
+      if (customerSort === 'name_asc') return (a.name || '').localeCompare(b.name || '');
+      if (customerSort === 'name_desc') return (b.name || '').localeCompare(a.name || '');
+      if (customerSort === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
+      if (customerSort === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+      return 0;
+    });
+
   if (authLoading || !user || user.role !== 'admin') {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
@@ -334,7 +448,7 @@ export default function AdminDashboardPage() {
             👑 Admin Dashboard
           </h1>
           <p className="text-choco-500 text-xs sm:text-sm mt-0.5">
-            Manage chocolates, mobile notification numbers, customer orders, and telemetry
+            Manage chocolates, customer telemetry, reviews, mobile notifications, and fulfillment
           </p>
         </div>
 
@@ -356,73 +470,97 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Admin Tabs - Vertical on mobile, responsive grid, no horizontal scroll */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 border-b border-choco-200 pb-3">
+      {/* Admin Tabs - Responsive Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 border-b border-choco-200 pb-3">
         <button
-          onClick={() => setActiveTab('overview')}
-          className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-2 ${
+          onClick={() => { setActiveTab('overview'); setSelectedCustomer(null); }}
+          className={`px-3 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-1.5 ${
             activeTab === 'overview'
               ? 'bg-choco-800 text-cream shadow-sm'
               : 'bg-white text-choco-700 hover:bg-choco-50 border border-choco-100'
           }`}
         >
-          <span>📊</span> Business Overview
+          <span>📊</span> Overview
         </button>
         <button
-          onClick={() => setActiveTab('products')}
-          className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-2 ${
-            activeTab === 'products'
-              ? 'bg-choco-800 text-cream shadow-sm'
-              : 'bg-white text-choco-700 hover:bg-choco-50 border border-choco-100'
-          }`}
-        >
-          <span>🍫</span> Manage Chocolates ({products.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('whatsapp')}
-          className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-2 ${
-            activeTab === 'whatsapp'
-              ? 'bg-choco-800 text-cream shadow-sm'
-              : 'bg-white text-choco-700 hover:bg-choco-50 border border-choco-100'
-          }`}
-        >
-          <span>📱</span> Store WhatsApp Number
-        </button>
-        <button
-          onClick={() => setActiveTab('orders')}
-          className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-2 ${
+          onClick={() => { setActiveTab('orders'); setSelectedCustomer(null); }}
+          className={`px-3 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-1.5 ${
             activeTab === 'orders'
               ? 'bg-choco-800 text-cream shadow-sm'
               : 'bg-white text-choco-700 hover:bg-choco-50 border border-choco-100'
           }`}
         >
-          <span>📦</span> Orders Telemetry ({orders.length})
+          <span>📦</span> Orders ({orders.length})
+        </button>
+        <button
+          onClick={() => { setActiveTab('customers'); }}
+          className={`px-3 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-1.5 ${
+            activeTab === 'customers'
+              ? 'bg-choco-800 text-cream shadow-sm'
+              : 'bg-white text-choco-700 hover:bg-choco-50 border border-choco-100'
+          }`}
+        >
+          <span>👥</span> Customers ({customers.length})
+        </button>
+        <button
+          onClick={() => { setActiveTab('products'); setSelectedCustomer(null); }}
+          className={`px-3 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-1.5 ${
+            activeTab === 'products'
+              ? 'bg-choco-800 text-cream shadow-sm'
+              : 'bg-white text-choco-700 hover:bg-choco-50 border border-choco-100'
+          }`}
+        >
+          <span>🍫</span> Chocolates ({products.length})
+        </button>
+        <button
+          onClick={() => { setActiveTab('whatsapp'); setSelectedCustomer(null); }}
+          className={`col-span-2 sm:col-span-1 px-3 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all text-center flex items-center justify-center gap-1.5 ${
+            activeTab === 'whatsapp'
+              ? 'bg-choco-800 text-cream shadow-sm'
+              : 'bg-white text-choco-700 hover:bg-choco-50 border border-choco-100'
+          }`}
+        >
+          <span>📱</span> WhatsApp
         </button>
       </div>
 
-      {/* TAB 1: OVERVIEW - Clean Vertical Layout */}
+      {/* TAB 1: OVERVIEW - Clickable Telemetry Cards */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          {/* Vertical Stacked Overview Items */}
-          <div className="flex flex-col space-y-3.5">
-            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl flex-shrink-0">
+          {/* Vertical Stack of Interactive Summary Metric Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {/* 1. Total Orders Card (Clickable -> Orders Tab) */}
+            <button
+              type="button"
+              onClick={() => {
+                setOrderStatusFilter('all');
+                setActiveTab('orders');
+              }}
+              className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center justify-between text-left hover:border-choco-300 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-105 transition-transform">
                   📦
                 </div>
                 <div>
                   <p className="text-choco-500 text-xs font-medium">Total Orders</p>
                   <p className="font-display text-2xl font-bold text-choco-900">{stats?.totalOrders || orders.length || 0}</p>
+                  <p className="text-[10px] text-blue-600 font-semibold mt-0.5">Click to view orders →</p>
                 </div>
               </div>
-              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-blue-700 hidden sm:inline-block">
-                All-time Orders
-              </span>
-            </div>
+            </button>
 
-            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl flex-shrink-0">
+            {/* 2. Total Revenue Card (Clickable -> Orders Tab) */}
+            <button
+              type="button"
+              onClick={() => {
+                setOrderStatusFilter('all');
+                setActiveTab('orders');
+              }}
+              className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center justify-between text-left hover:border-emerald-300 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-105 transition-transform">
                   💰
                 </div>
                 <div>
@@ -430,76 +568,97 @@ export default function AdminDashboardPage() {
                   <p className="font-display text-2xl font-bold text-choco-900">
                     ₹{stats?.totalRevenue?.toLocaleString('en-IN') || 0}
                   </p>
+                  <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">Gross store earnings →</p>
                 </div>
               </div>
-              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 hidden sm:inline-block">
-                Gross Earnings
-              </span>
-            </div>
+            </button>
 
-            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl flex-shrink-0">
+            {/* 3. Pending Orders Card (Clickable -> Orders Tab with Pending filter) */}
+            <button
+              type="button"
+              onClick={() => {
+                setOrderStatusFilter('Pending');
+                setActiveTab('orders');
+              }}
+              className="bg-white p-5 rounded-2xl border border-amber-200 bg-amber-50/20 shadow-sm flex items-center justify-between text-left hover:border-amber-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-105 transition-transform">
                   ⏳
                 </div>
                 <div>
-                  <p className="text-choco-500 text-xs font-medium">Pending Orders</p>
-                  <p className="font-display text-2xl font-bold text-choco-900">{stats?.pendingOrders || 0}</p>
+                  <p className="text-amber-800 text-xs font-semibold">Pending Orders</p>
+                  <p className="font-display text-2xl font-bold text-choco-900">{stats?.pendingOrders || orders.filter(o => (o.orderStatus || o.status) === 'Pending').length || 0}</p>
+                  <p className="text-[10px] text-amber-700 font-bold mt-0.5">Filter pending orders →</p>
                 </div>
               </div>
-              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-amber-50 text-amber-700 hidden sm:inline-block">
-                Needs Attention
-              </span>
-            </div>
+            </button>
 
-            <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl flex-shrink-0">
+            {/* 4. Total Customers Card (Clickable -> Customers Tab) */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCustomer(null);
+                setActiveTab('customers');
+              }}
+              className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm flex items-center justify-between text-left hover:border-purple-300 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-105 transition-transform">
                   👥
                 </div>
                 <div>
                   <p className="text-choco-500 text-xs font-medium">Customers</p>
-                  <p className="font-display text-2xl font-bold text-choco-900">{stats?.totalCustomers || stats?.totalUsers || 0}</p>
+                  <p className="font-display text-2xl font-bold text-choco-900">{stats?.totalCustomers || stats?.totalUsers || customers.length || 0}</p>
+                  <p className="text-[10px] text-purple-600 font-semibold mt-0.5">View customer list →</p>
                 </div>
               </div>
-              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-purple-50 text-purple-700 hidden sm:inline-block">
-                Registered Users
-              </span>
-            </div>
+            </button>
           </div>
 
-          {/* Quick Store Actions - Vertical Stack */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-choco-100">
+          {/* Quick Store Actions - Wrapping Safe Cards */}
+          <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-choco-100">
             <h3 className="font-display text-lg font-bold text-choco-900 mb-3">⚡ Quick Store Actions</h3>
             <div className="flex flex-col space-y-3">
               <button
+                type="button"
                 onClick={() => { setActiveTab('products'); handleOpenAddModal(); }}
-                className="btn-gold p-4 text-left text-sm font-semibold flex items-center gap-3.5 w-full justify-start rounded-2xl"
+                className="w-full text-left p-4 rounded-2xl bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 text-white shadow-gold flex items-center gap-3.5 transition-all whitespace-normal break-words"
               >
-                <span className="text-2xl">🍫</span>
-                <div>
-                  <p className="font-bold">Add New Chocolate Product</p>
-                  <p className="text-xs font-normal opacity-90">Create a new item, set pricing, shape options, and inventory stock</p>
+                <span className="text-2xl flex-shrink-0">🍫</span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-sm sm:text-base leading-snug">Add New Chocolate Product</p>
+                  <p className="text-xs font-normal opacity-90 leading-normal mt-0.5">
+                    Create a new item, set pricing, shape options, and inventory stock
+                  </p>
                 </div>
               </button>
+
               <button
+                type="button"
                 onClick={() => setActiveTab('whatsapp')}
-                className="btn-secondary p-4 text-left text-sm font-semibold flex items-center gap-3.5 w-full justify-start rounded-2xl border border-choco-200"
+                className="w-full text-left p-4 rounded-2xl bg-white hover:bg-choco-50 text-choco-800 border border-choco-200 shadow-xs flex items-center gap-3.5 transition-all whitespace-normal break-words"
               >
-                <span className="text-2xl">📱</span>
-                <div>
-                  <p className="font-bold">Configure WhatsApp Mobile Number</p>
-                  <p className="text-xs font-normal text-choco-600">Update destination mobile number for customer inquiries and orders</p>
+                <span className="text-2xl flex-shrink-0">📱</span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-sm sm:text-base text-choco-900 leading-snug">Configure WhatsApp Mobile Number</p>
+                  <p className="text-xs font-normal text-choco-600 leading-normal mt-0.5">
+                    Update destination mobile number for customer inquiries and orders
+                  </p>
                 </div>
               </button>
+
               <button
+                type="button"
                 onClick={() => setActiveTab('orders')}
-                className="btn-primary p-4 text-left text-sm font-semibold flex items-center gap-3.5 w-full justify-start rounded-2xl"
+                className="w-full text-left p-4 rounded-2xl bg-choco-900 hover:bg-choco-800 text-white shadow-choco flex items-center gap-3.5 transition-all whitespace-normal break-words"
               >
-                <span className="text-2xl">📦</span>
-                <div>
-                  <p className="font-bold">Review Customer Orders</p>
-                  <p className="text-xs font-normal text-choco-200">Track order statuses, customer addresses, and order delivery</p>
+                <span className="text-2xl flex-shrink-0">📦</span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-sm sm:text-base leading-snug">Review Customer Orders</p>
+                  <p className="text-xs font-normal text-choco-200 leading-normal mt-0.5">
+                    Track order statuses, customer addresses, take-away pickups, and delivery
+                  </p>
                 </div>
               </button>
             </div>
@@ -507,15 +666,625 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* TAB 2: MANAGE CHOCOLATES - Vertical Layout */}
+      {/* TAB 2: ORDERS MANAGEMENT - Search, Filter, Sort, Complete Details & Ratings */}
+      {activeTab === 'orders' && (
+        <div className="space-y-4">
+          {/* Header and Controls */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <div>
+                <h2 className="font-display text-xl font-bold text-choco-900">
+                  Customer Orders ({filteredOrders.length} of {orders.length})
+                </h2>
+                <p className="text-choco-500 text-xs">
+                  Search, filter, update statuses, inspect ordered items, and review customer ratings
+                </p>
+              </div>
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                className="btn-secondary text-xs py-2 px-3 flex items-center gap-1 self-end sm:self-auto"
+              >
+                <span>🔄</span> Refresh
+              </button>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2 border-t border-choco-100">
+              {/* Search */}
+              <div>
+                <label className="text-[11px] font-semibold text-choco-600 block mb-1">Search Orders</label>
+                <input
+                  type="text"
+                  placeholder="Order ID, Name, Phone, Item..."
+                  value={orderSearch}
+                  onChange={(e) => setOrderSearch(e.target.value)}
+                  className="input-field text-xs py-2 px-3"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <label className="text-[11px] font-semibold text-choco-600 block mb-1">Status Filter</label>
+                <select
+                  value={orderStatusFilter}
+                  onChange={(e) => setOrderStatusFilter(e.target.value)}
+                  className="input-field text-xs py-2 px-3 cursor-pointer"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="Pending">⏳ Pending</option>
+                  <option value="Confirmed">✓ Confirmed</option>
+                  <option value="Preparing">🥣 Preparing</option>
+                  <option value="Prepared">🍫 Prepared</option>
+                  <option value="Out for Delivery">🚚 Out for Delivery</option>
+                  <option value="Delivered">🎉 Delivered</option>
+                  <option value="Cancelled">❌ Cancelled</option>
+                </select>
+              </div>
+
+              {/* Order Type Filter */}
+              <div>
+                <label className="text-[11px] font-semibold text-choco-600 block mb-1">Fulfillment Type</label>
+                <select
+                  value={orderTypeFilter}
+                  onChange={(e) => setOrderTypeFilter(e.target.value)}
+                  className="input-field text-xs py-2 px-3 cursor-pointer"
+                >
+                  <option value="all">All Fulfillment Types</option>
+                  <option value="delivery">🚚 Home Delivery</option>
+                  <option value="takeaway">🛍️ Take-away (Store Pickup)</option>
+                </select>
+              </div>
+
+              {/* Sort By */}
+              <div>
+                <label className="text-[11px] font-semibold text-choco-600 block mb-1">Sort Orders</label>
+                <select
+                  value={orderSort}
+                  onChange={(e) => setOrderSort(e.target.value)}
+                  className="input-field text-xs py-2 px-3 cursor-pointer"
+                >
+                  <option value="newest">📅 Newest First</option>
+                  <option value="oldest">📅 Oldest First</option>
+                  <option value="amount_desc">💰 Highest Amount</option>
+                  <option value="amount_asc">💰 Lowest Amount</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Orders List */}
+          {filteredOrders.length === 0 ? (
+            <div className="bg-white p-12 rounded-3xl text-center border border-choco-100">
+              <span className="text-4xl block mb-2">📦</span>
+              <p className="text-choco-600 font-medium">No orders match your filter criteria.</p>
+              {(orderSearch || orderStatusFilter !== 'all' || orderTypeFilter !== 'all') && (
+                <button
+                  onClick={() => {
+                    setOrderSearch('');
+                    setOrderStatusFilter('all');
+                    setOrderTypeFilter('all');
+                  }}
+                  className="mt-3 btn-secondary text-xs py-1.5 px-3"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredOrders.map((o) => {
+                const customerName =
+                  o.shippingAddress?.fullName ||
+                  o.deliveryAddress?.fullName ||
+                  o.guestCustomer?.name ||
+                  o.user?.name ||
+                  'Customer';
+                const customerPhone =
+                  o.shippingAddress?.phone ||
+                  o.deliveryAddress?.phone ||
+                  o.guestCustomer?.phone ||
+                  o.user?.phone ||
+                  '';
+                const customerEmail = o.user?.email || o.guestCustomer?.email || '';
+                const isTakeaway = o.orderType === 'takeaway' || o.isTakeaway;
+                const currentStatus = o.orderStatus || o.status || 'Pending';
+
+                // Extract delivery address components
+                const street = o.shippingAddress?.street || o.deliveryAddress?.street || o.guestCustomer?.address?.street || '';
+                const city = o.shippingAddress?.city || o.deliveryAddress?.city || o.guestCustomer?.address?.city || '';
+                const state = o.shippingAddress?.state || o.deliveryAddress?.state || o.guestCustomer?.address?.state || '';
+                const pincode = o.shippingAddress?.pincode || o.deliveryAddress?.pincode || o.guestCustomer?.address?.pincode || '';
+
+                const fullAddressString = [street, city, state, pincode].filter(Boolean).join(', ');
+
+                return (
+                  <div
+                    key={o._id}
+                    className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm space-y-4 hover:border-choco-200 transition-all"
+                  >
+                    {/* Header Row: ID, Fulfillment badge, Payment badge, Date, Status Selector */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-choco-100 pb-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs font-bold text-choco-800 bg-choco-100 px-2.5 py-1 rounded-lg">
+                          #{o._id.slice(-6).toUpperCase()}
+                        </span>
+                        
+                        {/* Fulfillment Badge */}
+                        <span
+                          className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
+                            isTakeaway
+                              ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                              : 'bg-blue-100 text-blue-900 border border-blue-200'
+                          }`}
+                        >
+                          {isTakeaway ? '🛍️ Take-away Pickup' : '🚚 Home Delivery'}
+                        </span>
+
+                        {/* Payment Method Badge */}
+                        <span className="text-xs font-medium uppercase px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          💵 {o.paymentMethod === 'online' ? 'Online Paid' : 'Cash on Delivery (COD)'}
+                        </span>
+
+                        {/* Rating Badge */}
+                        {o.hasReview ? (
+                          <span className="text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-md flex items-center gap-1">
+                            ⭐ Rating Given {o.reviews?.[0]?.rating ? `(${o.reviews[0].rating}/5)` : ''}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-choco-400 bg-choco-50 px-2 py-0.5 rounded-md">
+                            ⏳ No Rating Yet
+                          </span>
+                        )}
+
+                        <span className="text-xs text-choco-400">
+                          {new Date(o.createdAt).toLocaleDateString('en-IN', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+
+                      {/* Status Selector */}
+                      <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                        <span className="text-xs font-semibold text-choco-700">Status:</span>
+                        <select
+                          value={currentStatus}
+                          onChange={(e) => handleOrderStatusChange(o._id, e.target.value)}
+                          className={`text-xs font-bold py-1.5 px-3 rounded-xl border cursor-pointer shadow-xs ${
+                            currentStatus === 'Delivered'
+                              ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                              : currentStatus === 'Cancelled'
+                              ? 'bg-red-50 border-red-300 text-red-800'
+                              : currentStatus === 'Out for Delivery'
+                              ? 'bg-blue-50 border-blue-300 text-blue-800'
+                              : 'bg-amber-50 border-amber-300 text-amber-800'
+                          }`}
+                        >
+                          <option value="Pending">⏳ Pending</option>
+                          <option value="Confirmed">✓ Confirmed</option>
+                          <option value="Preparing">🥣 Preparing</option>
+                          <option value="Prepared">🍫 Prepared</option>
+                          <option value="Out for Delivery">🚚 Out for Delivery</option>
+                          <option value="Delivered">🎉 Delivered</option>
+                          <option value="Cancelled">❌ Cancelled</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Middle Section: Customer Details & Fulfillment Destination */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-choco-50/50 p-3.5 rounded-xl border border-choco-100 text-xs">
+                      {/* Customer Info with Clickable Drilldown Trigger */}
+                      <div className="space-y-1">
+                        <p className="text-[11px] font-bold text-choco-500 uppercase tracking-wider">Customer Details</p>
+                        <div className="flex items-center gap-2">
+                          {o.user ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenCustomerDrilldown(o.user)}
+                              className="font-bold text-choco-900 text-sm hover:text-gold-600 underline flex items-center gap-1 text-left"
+                              title="Click to view full customer history"
+                            >
+                              👤 {customerName} <span className="text-[10px] text-gold-600 font-semibold no-underline">↗ View History</span>
+                            </button>
+                          ) : (
+                            <p className="font-bold text-choco-900 text-sm">👤 {customerName} (Guest)</p>
+                          )}
+                        </div>
+                        {customerPhone && (
+                          <div className="flex items-center gap-2 text-choco-700">
+                            <span>📱 {customerPhone}</span>
+                            <a
+                              href={`https://wa.me/${customerPhone.replace(/[^0-9]/g, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded hover:bg-emerald-200"
+                            >
+                              💬 WhatsApp
+                            </a>
+                            <a
+                              href={`tel:${customerPhone}`}
+                              className="text-[10px] font-bold bg-choco-100 text-choco-800 px-1.5 py-0.5 rounded hover:bg-choco-200"
+                            >
+                              📞 Call
+                            </a>
+                          </div>
+                        )}
+                        {customerEmail && <p className="text-choco-500">✉️ {customerEmail}</p>}
+                      </div>
+
+                      {/* Fulfillment Destination / Pickup Info */}
+                      <div className="space-y-1">
+                        <p className="text-[11px] font-bold text-choco-500 uppercase tracking-wider">
+                          {isTakeaway ? 'Pickup Details' : 'Delivery Address'}
+                        </p>
+                        {isTakeaway ? (
+                          <div className="p-2 bg-amber-50/80 rounded-lg border border-amber-200 text-amber-900">
+                            <p className="font-semibold">🛍️ Customer Store Pickup</p>
+                            <p className="text-[11px] text-amber-800 mt-0.5">
+                              Customer will collect this order directly from the store location.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="text-choco-700">
+                            <p className="font-semibold">{fullAddressString || 'No street address provided'}</p>
+                            {o.shippingAddress?.notes && (
+                              <p className="text-choco-500 italic mt-0.5">Note: "{o.shippingAddress.notes}"</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Ordered Items Breakdown with Unified Product Details */}
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-bold text-choco-500 uppercase tracking-wider">
+                        Ordered Items & Specifications
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {o.items?.map((it, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center gap-3 p-2.5 bg-white rounded-xl border border-choco-100 shadow-xs"
+                          >
+                            <img
+                              src={getImageUrl(it.image || it.product?.images?.[0]) || 'https://images.unsplash.com/photo-1548907040-4baa42d10919?w=80&q=80'}
+                              alt={it.name || 'Chocolate'}
+                              className="w-12 h-12 rounded-lg object-cover border border-choco-200 flex-shrink-0"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-choco-900 text-xs truncate">
+                                {it.name || it.product?.name || 'Handcrafted Chocolate'}
+                              </p>
+                              <div className="flex items-center gap-2 text-[11px] text-choco-600">
+                                <span>Qty: <strong className="text-choco-900">{it.quantity}</strong></span>
+                                {it.shape && (
+                                  <span className="bg-choco-100 text-choco-800 px-1.5 py-0.2 rounded font-medium">
+                                    {it.shape}
+                                  </span>
+                                )}
+                                <span>@ ₹{it.price}</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-choco-900 text-xs font-display">
+                                ₹{(it.price || 0) * (it.quantity || 1)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Reviews / Feedback snippet if available */}
+                    {o.reviews && o.reviews.length > 0 && (
+                      <div className="p-3 bg-gold-50/60 rounded-xl border border-gold-200/80 text-xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-gold-900 flex items-center gap-1">
+                            ⭐ Customer Review ({o.reviews[0].rating}/5 Stars)
+                          </span>
+                          <span className="text-[10px] text-gold-700">
+                            {new Date(o.reviews[0].createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {o.reviews[0].comment && (
+                          <p className="text-choco-800 italic">"{o.reviews[0].comment}"</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Footer Row: Total Price */}
+                    <div className="flex justify-between items-center pt-2 border-t border-choco-100">
+                      <span className="text-xs font-semibold text-choco-600">Total Order Amount</span>
+                      <span className="font-display text-lg font-bold text-choco-900">₹{o.totalAmount}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: CUSTOMERS & DRILLDOWN VIEW */}
+      {activeTab === 'customers' && (
+        <div className="space-y-4">
+          {/* If a customer is selected, show the Dedicated Customer Details View */}
+          {selectedCustomer ? (
+            <div className="space-y-4">
+              {/* Back button and Customer Banner */}
+              <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm space-y-4">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCustomer(null)}
+                  className="btn-secondary text-xs py-1.5 px-3.5 flex items-center gap-1.5 font-semibold text-choco-800"
+                >
+                  ← Back to All Customers
+                </button>
+
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-2 border-t border-choco-100">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-14 h-14 rounded-2xl bg-choco-gradient flex items-center justify-center text-cream text-xl font-bold shadow-choco">
+                      {selectedCustomer.name ? selectedCustomer.name.charAt(0).toUpperCase() : 'C'}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="font-display text-xl font-bold text-choco-900">{selectedCustomer.name}</h2>
+                        <span className="text-[10px] font-extrabold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full uppercase">
+                          {selectedCustomer.role || 'Customer'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-choco-500">{selectedCustomer.email}</p>
+                      {selectedCustomer.phone && (
+                        <div className="flex items-center gap-2 mt-1 text-xs text-choco-700">
+                          <span>📱 {selectedCustomer.phone}</span>
+                          <a
+                            href={`https://wa.me/${selectedCustomer.phone.replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded"
+                          >
+                            💬 WhatsApp
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Customer Aggregated Metrics */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full sm:w-auto text-center">
+                    <div className="bg-choco-50 p-2.5 rounded-xl border border-choco-100">
+                      <p className="text-[10px] text-choco-500 font-semibold">Total Orders</p>
+                      <p className="font-bold text-base text-choco-900 font-display">{customerOrders.length}</p>
+                    </div>
+                    <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-100">
+                      <p className="text-[10px] text-emerald-700 font-semibold">Total Spent</p>
+                      <p className="font-bold text-base text-emerald-900 font-display">
+                        ₹{customerOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0)}
+                      </p>
+                    </div>
+                    <div className="bg-amber-50 p-2.5 rounded-xl border border-amber-100 col-span-2 sm:col-span-1">
+                      <p className="text-[10px] text-amber-700 font-semibold">Reviews</p>
+                      <p className="font-bold text-base text-amber-900 font-display">{customerReviews.length}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Saved Address if present */}
+                {selectedCustomer.address && (selectedCustomer.address.street || selectedCustomer.address.city) && (
+                  <div className="p-3 bg-choco-50/70 rounded-xl text-xs text-choco-700 border border-choco-100">
+                    <span className="font-bold text-choco-900">Saved Default Address: </span>
+                    {[
+                      selectedCustomer.address.street,
+                      selectedCustomer.address.city,
+                      selectedCustomer.address.state,
+                      selectedCustomer.address.pincode,
+                    ]
+                      .filter(Boolean)
+                      .join(', ')}
+                  </div>
+                )}
+              </div>
+
+              {/* Customer Orders History Section */}
+              <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm space-y-4">
+                <h3 className="font-display text-base font-bold text-choco-900">
+                  Complete Order History ({customerOrders.length})
+                </h3>
+
+                {loadingCustomerDetails ? (
+                  <div className="py-8 text-center">
+                    <div className="animate-spin w-8 h-8 border-3 border-choco-800 border-t-transparent rounded-full mx-auto" />
+                  </div>
+                ) : customerOrders.length === 0 ? (
+                  <p className="text-xs text-choco-500 italic">No orders found for this customer.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {customerOrders.map((o) => (
+                      <div
+                        key={o._id}
+                        className="p-3.5 bg-choco-50/50 rounded-xl border border-choco-100 text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono font-bold text-choco-800">#{o._id.slice(-6).toUpperCase()}</span>
+                            <span className="bg-white px-2 py-0.5 rounded text-[10px] font-semibold text-choco-700 border border-choco-200">
+                              {o.orderType === 'takeaway' || o.isTakeaway ? '🛍️ Take-away' : '🚚 Delivery'}
+                            </span>
+                            <span className="text-choco-400">
+                              {new Date(o.createdAt).toLocaleDateString('en-IN', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-choco-700 mt-1">
+                            Items: {o.items?.map((it) => `${it.name || 'Chocolate'} (x${it.quantity})`).join(', ')}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-3 self-end sm:self-auto">
+                          <span className="font-bold text-sm font-display text-choco-900">₹{o.totalAmount}</span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              (o.orderStatus || o.status) === 'Delivered'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : (o.orderStatus || o.status) === 'Cancelled'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {o.orderStatus || o.status || 'Pending'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Customer Reviews Section */}
+              {customerReviews.length > 0 && (
+                <div className="bg-white p-5 rounded-2xl border border-choco-100 shadow-sm space-y-3">
+                  <h3 className="font-display text-base font-bold text-choco-900">
+                    Customer Reviews ({customerReviews.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {customerReviews.map((r) => (
+                      <div key={r._id} className="p-3 bg-amber-50/50 rounded-xl border border-amber-200 text-xs">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-bold text-amber-900">⭐ {r.rating} / 5 Stars</span>
+                          <span className="text-[10px] text-choco-400">
+                            {new Date(r.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {r.comment && <p className="text-choco-800 italic">"{r.comment}"</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Main Customers Directory List */
+            <div className="space-y-4">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div>
+                    <h2 className="font-display text-xl font-bold text-choco-900">
+                      Customer Directory ({filteredCustomers.length} of {customers.length})
+                    </h2>
+                    <p className="text-choco-500 text-xs">
+                      Search, view metrics, and drill down into individual customer purchase histories
+                    </p>
+                  </div>
+                </div>
+
+                {/* Filter Controls */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-choco-100">
+                  <div>
+                    <label className="text-[11px] font-semibold text-choco-600 block mb-1">Search Customers</label>
+                    <input
+                      type="text"
+                      placeholder="Search by name, email, or phone..."
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
+                      className="input-field text-xs py-2 px-3"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-choco-600 block mb-1">Sort Customers</label>
+                    <select
+                      value={customerSort}
+                      onChange={(e) => setCustomerSort(e.target.value)}
+                      className="input-field text-xs py-2 px-3 cursor-pointer"
+                    >
+                      <option value="orders_desc">📦 Most Orders</option>
+                      <option value="spent_desc">💰 Highest Lifetime Spend</option>
+                      <option value="name_asc">🔤 Name (A - Z)</option>
+                      <option value="name_desc">🔤 Name (Z - A)</option>
+                      <option value="newest">📅 Recently Registered</option>
+                      <option value="oldest">📅 Oldest Registered</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {filteredCustomers.length === 0 ? (
+                <div className="bg-white p-12 rounded-3xl text-center border border-choco-100">
+                  <span className="text-4xl block mb-2">👥</span>
+                  <p className="text-choco-600 font-medium">No customers found.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredCustomers.map((c) => (
+                    <div
+                      key={c._id}
+                      className="bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-choco-200 transition-all"
+                    >
+                      <div className="flex items-center gap-3.5 w-full sm:w-auto">
+                        <div className="w-12 h-12 rounded-xl bg-choco-gradient flex items-center justify-center text-cream text-lg font-bold shadow-choco flex-shrink-0">
+                          {c.name ? c.name.charAt(0).toUpperCase() : 'U'}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-semibold text-choco-900 text-sm">{c.name}</h4>
+                            {c.role === 'admin' && (
+                              <span className="text-[10px] font-bold bg-gold-100 text-gold-800 px-2 py-0.5 rounded-full">
+                                👑 Admin
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-choco-500">{c.email}</p>
+                          {c.phone && <p className="text-xs text-choco-600 font-mono mt-0.5">📱 {c.phone}</p>}
+                        </div>
+                      </div>
+
+                      {/* Right info: Metrics & Action button */}
+                      <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-choco-50">
+                        <div className="text-left sm:text-right text-xs">
+                          <span className="font-bold text-choco-900 block font-display text-sm">
+                            {c.totalOrders || 0} Orders
+                          </span>
+                          <span className="text-choco-500 text-[11px]">
+                            ₹{(c.totalSpent || 0).toLocaleString('en-IN')} spent
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => loadCustomerDrilldown(c._id, c)}
+                          className="btn-secondary text-xs py-2 px-3.5 font-semibold text-choco-800 hover:bg-choco-100 whitespace-nowrap"
+                        >
+                          👁️ View Details
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 4: MANAGE CHOCOLATES */}
       {activeTab === 'products' && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm">
             <div>
               <h2 className="font-display text-xl font-bold text-choco-900">Chocolate Catalog ({products.length})</h2>
-              <p className="text-choco-500 text-xs">Add, edit prices, stock, shape options, or remove chocolates</p>
+              <p className="text-choco-500 text-xs">Add, edit prices, stock, shape options, photos, or toggle availability</p>
             </div>
-            <button onClick={handleOpenAddModal} className="btn-gold py-2.5 px-4 text-xs sm:text-sm font-semibold flex items-center gap-1.5 w-full sm:w-auto justify-center">
+            <button
+              onClick={handleOpenAddModal}
+              className="btn-gold py-2.5 px-4 text-xs sm:text-sm font-semibold flex items-center gap-1.5 w-full sm:w-auto justify-center"
+            >
               ✨ Add New Chocolate
             </button>
           </div>
@@ -596,7 +1365,7 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* TAB 3: STORE WHATSAPP NUMBER MANAGER */}
+      {/* TAB 5: STORE WHATSAPP NUMBER MANAGER */}
       {activeTab === 'whatsapp' && (
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-choco-100 space-y-6 max-w-2xl">
           <div>
@@ -649,119 +1418,10 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* TAB 4: ORDERS TELEMETRY - Vertical Order Stack */}
-      {activeTab === 'orders' && (
-        <div className="space-y-4">
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div>
-              <h2 className="font-display text-xl font-bold text-choco-900">Customer Orders ({orders.length})</h2>
-              <p className="text-choco-500 text-xs">Track order status and update customer order states</p>
-            </div>
-            <button
-              onClick={fetchData}
-              className="btn-secondary text-xs py-2 px-3 flex items-center gap-1 self-end sm:self-auto"
-            >
-              <span>🔄</span> Refresh Orders
-            </button>
-          </div>
-
-          {orders.length === 0 ? (
-            <div className="bg-white p-12 rounded-3xl text-center border border-choco-100">
-              <span className="text-4xl block mb-2">📦</span>
-              <p className="text-choco-600 font-medium">No customer orders recorded yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {orders.map((o) => {
-                const customerName =
-                  o.shippingAddress?.fullName ||
-                  o.deliveryAddress?.fullName ||
-                  o.guestCustomer?.name ||
-                  o.user?.name ||
-                  'Customer';
-                const customerPhone =
-                  o.shippingAddress?.phone ||
-                  o.deliveryAddress?.phone ||
-                  o.guestCustomer?.phone ||
-                  o.user?.phone ||
-                  'No Phone';
-                const location =
-                  o.shippingAddress?.city ||
-                  o.deliveryAddress?.city ||
-                  o.guestCustomer?.address?.city ||
-                  '';
-                const currentStatus = o.orderStatus || o.status || 'Pending';
-
-                return (
-                  <div
-                    key={o._id}
-                    className="bg-white p-4 sm:p-5 rounded-2xl border border-choco-100 shadow-sm flex flex-col md:flex-row justify-between gap-4 hover:border-choco-200 transition-colors"
-                  >
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-xs font-bold text-choco-700 bg-choco-100 px-2.5 py-1 rounded-lg">
-                          #{o._id.slice(-6)}
-                        </span>
-                        <span className="text-xs font-medium uppercase px-2 py-0.5 rounded-md bg-choco-100 text-choco-800">
-                          {o.paymentInfo?.status || o.paymentMethod || 'COD'}
-                        </span>
-                        <span className="text-xs text-choco-400">
-                          {new Date(o.createdAt).toLocaleDateString('en-IN', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-choco-900 text-sm">{customerName}</p>
-                        <p className="text-xs text-choco-500">
-                          📱 {customerPhone} {location ? ` • ${location}` : ''}
-                        </p>
-                      </div>
-                      <div className="text-xs text-choco-700 bg-choco-50 p-2.5 rounded-xl">
-                        <span className="font-semibold text-choco-800">Items: </span>
-                        {o.items
-                          ?.map((it) => `${it.name || it.product?.name || 'Chocolate'} (x${it.quantity}${it.shape ? ` - ${it.shape}` : ''})`)
-                          .join(', ')}
-                      </div>
-                    </div>
-
-                    <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center gap-3 border-t md:border-t-0 pt-3 md:pt-0 border-choco-100">
-                      <div className="text-left md:text-right">
-                        <p className="text-[11px] text-choco-400">Total Amount</p>
-                        <p className="font-bold font-display text-lg sm:text-xl text-choco-900">₹{o.totalAmount}</p>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-choco-500 hidden sm:inline">Status:</span>
-                        <select
-                          value={currentStatus}
-                          onChange={(e) => handleOrderStatusChange(o._id, e.target.value)}
-                          className="text-xs font-semibold p-2 rounded-xl border border-choco-200 bg-white text-choco-900 focus:outline-none cursor-pointer shadow-xs"
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="Confirmed">Confirmed</option>
-                          <option value="Preparing">Preparing</option>
-                          <option value="Out for Delivery">Out for Delivery</option>
-                          <option value="Delivered">Delivered</option>
-                          <option value="Cancelled">Cancelled</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* ADD / EDIT PRODUCT MODAL */}
       <AnimatePresence>
         {showProductModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

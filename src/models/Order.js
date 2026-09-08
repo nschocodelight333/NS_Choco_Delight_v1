@@ -95,6 +95,15 @@ const orderSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    orderType: {
+      type: String,
+      enum: ['delivery', 'takeaway'],
+      default: 'delivery',
+    },
+    paymentMethod: {
+      type: String,
+      default: 'cod',
+    },
     orderStatus: {
       type: String,
       enum: ['Pending', 'Confirmed', 'Preparing', 'Prepared', 'Out for Delivery', 'Delivered', 'Cancelled'],

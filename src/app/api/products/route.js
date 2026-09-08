@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Product from '@/models/Product';
@@ -234,6 +235,10 @@ export async function GET(req) {
 
     if (search) {
       query.$text = { $search: search };
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
     }
 
     let productQuery = Product.find(query);
@@ -242,6 +247,12 @@ export async function GET(req) {
       productQuery = productQuery.sort({ price: 1 });
     } else if (sort === 'price-high' || sort === 'price_desc') {
       productQuery = productQuery.sort({ price: -1 });
+    } else if (sort === 'oldest') {
+      productQuery = productQuery.sort({ createdAt: 1 });
+    } else if (sort === 'name_asc' || sort === 'name-az') {
+      productQuery = productQuery.sort({ name: 1 });
+    } else if (sort === 'name_desc' || sort === 'name-za') {
+      productQuery = productQuery.sort({ name: -1 });
     } else if (sort === 'rating') {
       productQuery = productQuery.sort({ ratingAverage: -1 });
     } else {
