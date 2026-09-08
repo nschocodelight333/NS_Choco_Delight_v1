@@ -20,8 +20,10 @@ export async function GET(req) {
     await connectDB();
     const orders = await Order.find({ user: user._id }).sort({ createdAt: -1 });
     const orders = await Order.find({ user: user._id }).sort({ createdAt: -1 }).lean();
+    const rawOrders = await Order.find({ user: user._id }).sort({ createdAt: -1 }).lean();
 
     const normalizedOrders = orders.map((order) => {
+    const normalizedOrders = rawOrders.map((order) => {
       const isTakeaway = Boolean(
         order.orderType === 'takeaway' ||
         order.deliveryAddress?.isTakeaway ||

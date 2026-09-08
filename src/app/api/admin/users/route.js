@@ -9,8 +9,6 @@ import { getAuthUser } from '@/lib/auth';
 
 export async function GET(req) {
   try {
-    const user = await getAuthUser(req);
-    if (!user || user.role !== 'admin') {
     const authUser = await getAuthUser(req);
     if (!authUser || authUser.role !== 'admin') {
       return NextResponse.json(
@@ -20,7 +18,6 @@ export async function GET(req) {
     }
 
     await connectDB();
-    const users = await User.find({}).select('-password').sort({ createdAt: -1 });
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
     const search = searchParams.get('search')?.trim();
@@ -50,21 +47,21 @@ export async function GET(req) {
 
       return NextResponse.json({
         success: true,
-        customer: {
+        user: {
           ...customer,
           totalOrders: customerOrders.length,
           totalSpent,
           pendingOrdersCount,
           deliveredOrdersCount,
           cancelledOrdersCount,
-          orders: customerOrders,
-          reviews: customerReviews,
         },
+        orders: customerOrders,
+        reviews: customerReviews,
       });
     }
 
     // All Customers List
-    let users = await User.find({}).select('-password').lean();
+    const usersList = await User.find({}).select('-password').lean();
 
     // Fetch all orders and reviews to enrich customer profiles
     const [allOrders, allReviews] = await Promise.all([
@@ -90,7 +87,7 @@ export async function GET(req) {
       }
     });
 
-    let enrichedUsers = users.map((u) => {
+    let enrichedUsers = usersList.map((u) => {
       const uId = u._id.toString();
       const userOrders = ordersByUser.get(uId) || [];
       const userReviews = reviewsByUser.get(uId) || [];
@@ -146,8 +143,6 @@ export async function GET(req) {
 
     return NextResponse.json({
       success: true,
-      count: users.length,
-      users,
       count: enrichedUsers.length,
       users: enrichedUsers,
     });

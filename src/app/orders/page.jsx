@@ -62,7 +62,6 @@ export default function OrdersPage() {
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <div className="flex items-center gap-3 mb-2">
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <span className={STATUS_COLORS[order.orderStatus] || 'badge bg-gray-100 text-gray-700'}>
                         {order.orderStatus}
@@ -77,7 +76,6 @@ export default function OrdersPage() {
                         {order.paymentMethod === 'online' ? 'Online Paid' : 'Cash on Delivery'}
                       </span>
                     </div>
-                    <p className="text-xs text-choco-400 font-mono mb-1">#{order._id.slice(-8).toUpperCase()}</p>
                     <div className="flex items-center gap-2 text-xs text-choco-400 font-mono mb-1">
                       <span>#{order._id.slice(-8).toUpperCase()}</span>
                       <span>•</span>

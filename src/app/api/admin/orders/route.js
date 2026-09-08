@@ -46,9 +46,6 @@ export async function GET(req) {
       query.user = userId;
     }
 
-    const orders = await Order.find(query)
-      .populate('user', 'name email phone')
-      .sort({ createdAt: -1 });
     let sortOption = { createdAt: -1 };
     if (sort === 'oldest') {
       sortOption = { createdAt: 1 };
@@ -58,7 +55,7 @@ export async function GET(req) {
       sortOption = { totalAmount: 1 };
     }
 
-    let orders = await Order.find(query)
+    let ordersList = await Order.find(query)
       .populate('user', 'name email phone address')
       .sort(sortOption)
       .lean();
@@ -66,7 +63,7 @@ export async function GET(req) {
     // In-memory search if search parameter is provided (for customer name/email, order ID, product name)
     if (search) {
       const searchLower = search.toLowerCase();
-      orders = orders.filter((o) => {
+      ordersList = ordersList.filter((o) => {
         const idMatch = o._id?.toString().toLowerCase().includes(searchLower);
         const nameMatch = (o.user?.name || o.guestCustomer?.name || o.deliveryAddress?.name || '').toLowerCase().includes(searchLower);
         const emailMatch = (o.user?.email || '').toLowerCase().includes(searchLower);
@@ -77,7 +74,7 @@ export async function GET(req) {
     }
 
     // Attach reviews for each order
-    const orderIds = orders.map((o) => o._id);
+    const orderIds = ordersList.map((o) => o._id);
     const reviews = await Review.find({ order: { $in: orderIds } }).lean();
     const reviewsByOrder = new Map();
     reviews.forEach((r) => {
@@ -86,7 +83,7 @@ export async function GET(req) {
       reviewsByOrder.get(oId).push(r);
     });
 
-    const enrichedOrders = orders.map((order) => {
+    const enrichedOrders = ordersList.map((order) => {
       const orderReviews = reviewsByOrder.get(order._id.toString()) || [];
       const isTakeaway = Boolean(
         order.orderType === 'takeaway' ||
@@ -105,8 +102,6 @@ export async function GET(req) {
 
     return NextResponse.json({
       success: true,
-      count: orders.length,
-      orders,
       count: enrichedOrders.length,
       orders: enrichedOrders,
     });
