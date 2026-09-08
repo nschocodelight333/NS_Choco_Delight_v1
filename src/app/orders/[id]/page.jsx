@@ -93,6 +93,58 @@ export default function OrderDetailsPage() {
           <p className="text-choco-400 text-xs mt-1">
             {new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'long' })}
           </p>
+        <div className="bg-choco-50 rounded-2xl p-4 sm:p-5 mb-6 border border-choco-100 space-y-3">
+          <div className="flex justify-between items-start flex-wrap gap-2">
+            <div>
+              <p className="text-choco-500 text-xs">Order ID</p>
+              <p className="font-mono font-bold text-choco-900 text-sm sm:text-base">#{order._id}</p>
+              <p className="text-choco-400 text-xs mt-0.5">
+                Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'long' })}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                (order.orderType === 'takeaway' || order.isTakeaway)
+                  ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                  : 'bg-blue-100 text-blue-900 border border-blue-200'
+              }`}>
+                {(order.orderType === 'takeaway' || order.isTakeaway) ? '🛍️ Take-away (Store Pickup)' : '🚚 Home Delivery'}
+              </span>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-200">
+                💵 {order.paymentMethod === 'online' ? 'Online Paid' : 'Cash on Delivery (COD)'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Fulfillment & Address Card */}
+        <div className="bg-white rounded-2xl shadow-sm border border-choco-100 p-5 mb-6 text-sm">
+          <h2 className="font-semibold text-choco-900 mb-2">
+            {(order.orderType === 'takeaway' || order.isTakeaway) ? '🛍️ Pickup Location' : '🚚 Delivery Address'}
+          </h2>
+          {(order.orderType === 'takeaway' || order.isTakeaway) ? (
+            <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900">
+              <p className="font-bold text-sm text-amber-950 mb-0.5">Store Pickup Confirmed</p>
+              <p>Your order is being handcrafted at NS Choco Delight. Please present your Order ID #{order._id.slice(-6).toUpperCase()} upon collection.</p>
+            </div>
+          ) : (
+            <div className="text-choco-700 text-xs space-y-1">
+              <p className="font-bold text-choco-900 text-sm">
+                {order.shippingAddress?.fullName || order.deliveryAddress?.fullName || 'Recipient'}
+              </p>
+              {(order.shippingAddress?.phone || order.deliveryAddress?.phone) && (
+                <p className="text-choco-600">📱 {order.shippingAddress?.phone || order.deliveryAddress?.phone}</p>
+              )}
+              <p className="text-choco-800">
+                {[
+                  order.shippingAddress?.street || order.deliveryAddress?.street,
+                  order.shippingAddress?.city || order.deliveryAddress?.city,
+                  order.shippingAddress?.state || order.deliveryAddress?.state,
+                  order.shippingAddress?.pincode || order.deliveryAddress?.pincode,
+                ].filter(Boolean).join(', ')}
+              </p>
+            </div>
+          )}
         </div>
 
         {order.orderStatus !== 'Cancelled' && (

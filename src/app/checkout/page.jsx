@@ -105,6 +105,13 @@ export default function CheckoutPage() {
 
   const validateAddress = () => {
     if (isTakeaway) return true;
+    if (isTakeaway) {
+      if (!address.phone?.trim()) {
+        toast.error('Please enter your mobile phone number for pickup notification');
+        return false;
+      }
+      return true;
+    }
     const required = ['street', 'city', 'state', 'pincode', 'phone'];
     for (const field of required) {
       if (!address[field]?.trim()) {
@@ -245,6 +252,30 @@ export default function CheckoutPage() {
               </h2>
 
               {!isTakeaway && (
+              {isTakeaway ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-950 space-y-1.5">
+                    <p className="font-bold text-sm">🏬 Store Pickup Selected</p>
+                    <p>Collect your freshly crafted chocolates directly at the NS Choco Delight counter.</p>
+                    <p className="font-semibold text-amber-900 mt-2">Payment: Pay upon pickup at store (Cash / UPI / Card)</p>
+                  </div>
+
+                  <div>
+                    <label className="label" htmlFor="checkout-phone">Contact Phone for Pickup Notification *</label>
+                    <input
+                      id="checkout-phone"
+                      name="phone"
+                      value={address.phone}
+                      onChange={handleAddressChange}
+                      placeholder="10-digit mobile number"
+                      maxLength={15}
+                      className="input-field text-sm font-mono"
+                      required
+                    />
+                    <p className="text-[11px] text-choco-500 mt-1">We'll alert you via WhatsApp / SMS once your order is ready for collection.</p>
+                  </div>
+                </div>
+              ) : (
                 <div className="space-y-4">
                   <div>
                     <label className="label" htmlFor="checkout-street">Street Address *</label>
@@ -309,6 +340,8 @@ export default function CheckoutPage() {
                         placeholder="10-digit mobile"
                         maxLength={10}
                         className="input-field text-sm"
+                        maxLength={15}
+                        className="input-field text-sm font-mono"
                         required
                       />
                     </div>
