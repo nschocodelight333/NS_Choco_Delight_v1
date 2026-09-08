@@ -166,9 +166,20 @@ export default function ProductDetailsPage() {
             </h1>
 
             <div className="flex items-center gap-3 mb-4">
-              <StarRating rating={product.ratingAverage || 4.8} size="md" />
-              <span className="text-choco-700 font-semibold">{product.ratingAverage?.toFixed(1) || '4.8'}</span>
-              <span className="text-choco-400 text-sm">({product.numReviews || 15} reviews)</span>
+              {product.numReviews > 0 ? (
+                <>
+                  <StarRating rating={product.ratingAverage || 0} size="md" />
+                  <span className="text-choco-700 font-semibold">{product.ratingAverage?.toFixed(1)}</span>
+                  <span className="text-choco-400 text-sm">
+                    ({product.numReviews} {product.numReviews === 1 ? 'review' : 'reviews'})
+                  </span>
+                </>
+              ) : (
+                <>
+                  <StarRating rating={0} size="md" />
+                  <span className="text-choco-500 text-xs sm:text-sm font-medium">No reviews yet</span>
+                </>
+              )}
             </div>
 
             <div className="text-4xl font-display font-bold text-choco-900 mb-4">

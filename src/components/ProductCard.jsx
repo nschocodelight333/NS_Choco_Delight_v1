@@ -61,9 +61,15 @@ const ProductCard = ({ product }) => {
               </p>
             )}
 
-            <div className="flex items-center gap-1 sm:gap-2 mb-2">
-              <StarRating rating={product.ratingAverage} size="sm" />
-              <span className="text-choco-500 text-[10px] sm:text-xs">({product.numReviews})</span>
+            <div className="flex items-center gap-1 sm:gap-2 mb-2 min-h-[20px]">
+              {product.numReviews > 0 ? (
+                <>
+                  <StarRating rating={product.ratingAverage || 0} size="sm" />
+                  <span className="text-choco-500 text-[10px] sm:text-xs font-medium">({product.numReviews})</span>
+                </>
+              ) : (
+                <span className="text-choco-400 text-[10px] sm:text-xs">No reviews yet</span>
+              )}
             </div>
 
             {product.shapeOptions?.length > 0 && (

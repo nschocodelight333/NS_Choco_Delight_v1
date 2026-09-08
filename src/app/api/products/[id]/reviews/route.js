@@ -51,6 +51,8 @@ export async function POST(req, { params }) {
       order: order ? order._id : null,
     });
 
+    await Review.calcAverageRating(productId);
+
     return NextResponse.json({
       success: true,
       review,
