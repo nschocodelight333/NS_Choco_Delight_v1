@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
-import { buildWhatsAppUrl } from '@/utils/whatsapp';
+import { useStoreWhatsApp, buildWhatsAppUrl } from '@/utils/whatsapp';
 import { getProducts } from '@/api/products';
 import ProductCard from '@/components/ProductCard';
 import { ProductCardSkeleton } from '@/components/SkeletonLoader';
@@ -28,6 +28,7 @@ const categories = [
 
 export default function Home() {
   const { user } = useAuth();
+  const whatsappNum = useStoreWhatsApp();
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -116,7 +117,7 @@ export default function Home() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-choco-950/80 via-transparent to-transparent flex items-end p-6">
                   <a
-                    href={buildWhatsAppUrl('I would like to place an order for Heart Shape Chocolates.')}
+                    href={buildWhatsAppUrl(whatsappNum, 'I would like to place an order for Heart Shape Chocolates.')}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btn-gold w-full text-center py-3 text-sm font-bold flex items-center justify-center gap-2 shadow-gold"
@@ -200,7 +201,7 @@ export default function Home() {
             Chat with us directly on WhatsApp for bulk orders, event favors, or special customized designs.
           </p>
           <a
-            href={buildWhatsAppUrl("I would like to ask about a custom chocolate order.")}
+            href={buildWhatsAppUrl(whatsappNum, user?.name ? `Hello! My name is ${user.name}. I would like to ask about a custom chocolate order.` : "I would like to ask about a custom chocolate order.")}
             target="_blank"
             rel="noopener noreferrer"
             id="whatsapp-cta-btn"

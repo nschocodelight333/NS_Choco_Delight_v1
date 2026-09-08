@@ -3,14 +3,15 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
-import { buildWhatsAppUrl } from '@/utils/whatsapp';
+import { useStoreWhatsApp, buildWhatsAppUrl, formatPhoneNumber } from '@/utils/whatsapp';
 
 export default function ContactPage() {
   const { user } = useAuth();
+  const whatsappNum = useStoreWhatsApp();
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [sent, setSent] = useState(false);
 
-  const receiverEmail = 'skshafiullashakhadar@gmail.com';
+  const receiverEmail = 'nschocodelight333@gmail.com';
 
   const buildMailtoUrl = (name, email, msg) => {
     const subject = encodeURIComponent(`New Inquiry from ${name} - NS Choco Delight`);
@@ -43,15 +44,22 @@ export default function ContactPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           <div className="space-y-6">
             <a
-              href={buildWhatsAppUrl(user?.name || 'Customer')}
+              href={buildWhatsAppUrl(whatsappNum, user?.name ? `I would like to get in touch with NS Choco Delight regarding an inquiry.` : "I would like to get in touch with NS Choco Delight.")}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-start gap-4 p-5 bg-white hover:bg-emerald-50/50 rounded-2xl shadow-sm border border-choco-100 transition-all group block"
+              id="contact-whatsapp-link"
+              className="flex items-start gap-4 p-5 bg-white hover:bg-emerald-50/60 rounded-2xl shadow-sm border border-choco-100 transition-all group block"
             >
               <span className="text-3xl">💬</span>
               <div>
-                <h3 className="font-semibold text-choco-900 mb-1">WhatsApp Instant Chat</h3>
-                <p className="text-choco-600 text-sm font-medium">+91 81859 20511</p>
+                <h3 className="font-semibold text-choco-900 mb-1 flex items-center gap-1.5">
+                  <span>WhatsApp Instant Chat</span>
+                  <span className="text-xs text-emerald-600 font-normal group-hover:underline">↗ Chat</span>
+                </h3>
+                <p className="text-choco-700 text-sm font-semibold font-mono">
+                  {formatPhoneNumber(whatsappNum)}
+                </p>
+                <p className="text-choco-400 text-xs mt-0.5">Click to open WhatsApp conversation</p>
               </div>
             </a>
 
@@ -59,7 +67,13 @@ export default function ContactPage() {
               <span className="text-3xl">📧</span>
               <div>
                 <h3 className="font-semibold text-choco-900 mb-1">Email</h3>
-                <p className="text-choco-600 text-sm font-medium">{receiverEmail}</p>
+                <a
+                  href={`mailto:${receiverEmail}`}
+                  className="text-choco-700 hover:text-choco-900 text-sm font-semibold font-mono hover:underline"
+                >
+                  {receiverEmail}
+                </a>
+                <p className="text-choco-400 text-xs mt-0.5">Send direct email inquiries</p>
               </div>
             </div>
           </div>
@@ -102,7 +116,7 @@ export default function ContactPage() {
                 </div>
               </div>
               <button type="submit" className="btn-primary w-full mt-5 py-3">
-                Send via Email
+                Send via Email ✉️
               </button>
             </form>
           </div>
